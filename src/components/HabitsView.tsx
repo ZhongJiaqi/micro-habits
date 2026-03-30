@@ -2,7 +2,6 @@ import { useState, FormEvent } from 'react';
 import { Plus, X, Edit2, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MicroHabit } from '../types';
-import { GoogleGenAI, Type } from "@google/genai";
 
 export default function HabitsView({ store }: { store: any }) {
   const [newHabitTitle, setNewHabitTitle] = useState('');
@@ -37,24 +36,15 @@ export default function HabitsView({ store }: { store: any }) {
 
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Generate 3 to 5 highly actionable, extremely small "micro-habits" based on this goal: "${aiGoal}". 
-A micro-habit should take less than 2 minutes to do.
-Return ONLY a JSON array of strings.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.STRING,
-            },
-          },
-        },
+      const response = await fetch('/api/generate-habits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: aiGoal }),
       });
 
-      const generatedHabits = JSON.parse(response.text || "[]");
+      if (!response.ok) throw new Error('Failed to generate habits');
+
+      const generatedHabits: string[] = await response.json();
       generatedHabits.forEach((habit: string) => {
         store.addMicroHabit(habit);
       });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { MicroHabit, Task, HabitPoolItem } from './types';
 import { db, auth } from './firebase';
@@ -69,8 +69,14 @@ const defaultData: AppData = {
 
 export function useStore(userId?: string) {
   const [data, setData] = useState<AppData>(defaultData);
+  const tasksLoadedRef = useRef(false);
+  // Track which habit-date combos we've already initiated task creation for,
+  // to avoid redundant Firestore writes (even though setDoc is idempotent).
+  const createdTaskIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
+    tasksLoadedRef.current = false;
+    createdTaskIdsRef.current = new Set();
     if (!userId) {
       setData(defaultData);
       return;
@@ -93,6 +99,7 @@ export function useStore(userId?: string) {
 
     const unsubTasks = onSnapshot(query(tasksRef), (snapshot) => {
       const tasks = snapshot.docs.map(doc => doc.data() as Task);
+      tasksLoadedRef.current = true;
       setData(prev => ({ ...prev, tasks }));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, tasksPath);
@@ -112,36 +119,59 @@ export function useStore(userId?: string) {
     };
   }, [userId]);
 
-  // --- Initialization / Daily Reset ---
+  // --- Daily Reset + Dedup ---
+  // 1. Clean up duplicate habit tasks (same habitId + date, different doc IDs)
+  // 2. Ensure each active habit has exactly one task for today
   useEffect(() => {
-    if (!userId || data.microHabits.length === 0) return;
+    if (!userId || !tasksLoadedRef.current || data.microHabits.length === 0) return;
 
     const today = format(new Date(), 'yyyy-MM-dd');
-    
-    // Check if active habits have tasks for today
+
+    // --- Step 1: Delete duplicate tasks ---
+    // Group today's habit tasks by habitId, keep only one (prefer deterministic ID)
+    const todayHabitTasks = data.tasks.filter(t => t.date === today && t.type === 'habit' && t.habitId);
+    const tasksByHabitId = new Map<string, Task[]>();
+    todayHabitTasks.forEach(t => {
+      const arr = tasksByHabitId.get(t.habitId!) || [];
+      arr.push(t);
+      tasksByHabitId.set(t.habitId!, arr);
+    });
+
+    tasksByHabitId.forEach((tasks, habitId) => {
+      if (tasks.length > 1) {
+        // Keep the one with deterministic ID (habitId_date), delete the rest
+        const deterministicId = `${habitId}_${today}`;
+        const toDelete = tasks.filter(t => t.id !== deterministicId);
+        toDelete.forEach(t => {
+          const path = `users/${userId}/tasks/${t.id}`;
+          deleteDoc(doc(db, path)).catch(() => {});
+        });
+      }
+    });
+
+    // --- Step 2: Create missing tasks ---
+    const existingHabitIds = new Set(todayHabitTasks.map(t => t.habitId));
+
     data.microHabits.forEach(habit => {
-      if (habit.active) {
-        const hasTaskToday = data.tasks.some(t => t.date === today && t.habitId === habit.id);
-        if (!hasTaskToday) {
-          const newTaskId = crypto.randomUUID();
-          const newTask: Task = {
-            id: newTaskId,
-            title: habit.title,
-            date: today,
-            completed: false,
-            type: 'habit',
-            habitId: habit.id,
-            userId,
-          };
-          const path = `users/${userId}/tasks/${newTaskId}`;
-          setDoc(doc(db, path), newTask).catch(error => handleFirestoreError(error, OperationType.CREATE, path));
-        }
+      const taskKey = `${habit.id}_${today}`;
+      if (habit.active && !existingHabitIds.has(habit.id) && !createdTaskIdsRef.current.has(taskKey)) {
+        createdTaskIdsRef.current.add(taskKey);
+        const path = `users/${userId}/tasks/${taskKey}`;
+        setDoc(doc(db, path), {
+          id: taskKey,
+          title: habit.title,
+          date: today,
+          completed: false,
+          type: 'habit',
+          habitId: habit.id,
+          userId,
+        } as Task).catch(error => handleFirestoreError(error, OperationType.CREATE, path));
       }
     });
   }, [data.microHabits, data.tasks, userId]);
 
   // --- Micro Habits ---
-  const addMicroHabit = async (title: string) => {
+  const addMicroHabit = async (title: string): Promise<MicroHabit | undefined> => {
     if (!userId) return;
     const newHabitId = crypto.randomUUID();
     const newHabit: MicroHabit = {
@@ -151,11 +181,16 @@ export function useStore(userId?: string) {
       active: true,
       userId,
     };
-    const path = `users/${userId}/microHabits/${newHabitId}`;
+    const habitPath = `users/${userId}/microHabits/${newHabitId}`;
     try {
-      await setDoc(doc(db, path), newHabit);
+      await setDoc(doc(db, habitPath), newHabit);
+      // Task creation is handled solely by the daily reset effect.
+      // The effect will pick up this new habit via onSnapshot and create
+      // the task with a deterministic ID. This avoids duplicate creation
+      // from both addMicroHabit and the effect racing each other.
+      return newHabit;
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
+      handleFirestoreError(error, OperationType.CREATE, habitPath);
     }
   };
 

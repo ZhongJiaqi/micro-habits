@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 方案B：圆角方块 + 对勾（完成感） -->
+  <rect width="512" height="512" rx="108" fill="#2C2C2C"/>
+  <polyline points="170,270 230,330 342,198" fill="none" stroke="#8A9A86" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

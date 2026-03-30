@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { format } from 'date-fns';
-import { Check, Plus, X, Edit2 } from 'lucide-react';
+import { Check, Plus, X } from 'lucide-react';
+import SwipeActions from './SwipeActions';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -28,13 +29,30 @@ export default function TodayView({ store }: { store: any }) {
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayTasks = store.data.tasks.filter((t: Task) => t.date === today);
-  
+
   const getWeight = (p?: 'low' | 'medium' | 'high') => p === 'high' ? 3 : p === 'medium' ? 2 : p === 'low' ? 1 : 0;
 
-  const habitTasks = todayTasks.filter((t: Task) => t.type === 'habit').sort((a: Task, b: Task) => getWeight(b.priority) - getWeight(a.priority));
+  // Deduplicate habit tasks: keep only 1 per habitId (prefer deterministic ID format)
+  const rawHabitTasks = todayTasks.filter((t: Task) => t.type === 'habit');
+  const seenHabitIds = new Set<string>();
+  const habitTasks = rawHabitTasks
+    .sort((a: Task, b: Task) => {
+      // Prefer deterministic IDs (habitId_date) over random UUIDs
+      const aIsDet = a.id === `${a.habitId}_${today}` ? 0 : 1;
+      const bIsDet = b.id === `${b.habitId}_${today}` ? 0 : 1;
+      return aIsDet - bIsDet;
+    })
+    .filter((t: Task) => {
+      if (!t.habitId || seenHabitIds.has(t.habitId)) return false;
+      seenHabitIds.add(t.habitId);
+      return true;
+    })
+    .sort((a: Task, b: Task) => getWeight(b.priority) - getWeight(a.priority));
+
   const oneTimeTasks = todayTasks.filter((t: Task) => t.type === 'one-time').sort((a: Task, b: Task) => getWeight(b.priority) - getWeight(a.priority));
 
-  const allCompleted = todayTasks.length > 0 && todayTasks.every((t: Task) => t.completed);
+  const dedupedTodayTasks = [...habitTasks, ...oneTimeTasks];
+  const allCompleted = dedupedTodayTasks.length > 0 && dedupedTodayTasks.every((t: Task) => t.completed);
 
   useEffect(() => {
     if (allCompleted) {
@@ -78,6 +96,7 @@ export default function TodayView({ store }: { store: any }) {
   };
 
   const renderTask = (task: Task) => {
+    const showEdit = task.type === 'one-time' && !task.completed && editingTaskId !== task.id;
     return (
       <motion.div
         layout
@@ -86,90 +105,80 @@ export default function TodayView({ store }: { store: any }) {
         exit={{ opacity: 0, height: 0, marginBottom: 0 }}
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         key={task.id}
-        className="group flex items-center justify-between py-4 border-b border-[#EAE8E3] transition-all duration-300 bg-transparent"
       >
-        <div className="flex items-center gap-4 flex-1 overflow-hidden">
-          <button 
-            onClick={() => store.toggleTaskCompletion(task.id)}
-            className={cn(
-              "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-500",
-              task.completed 
-                ? "bg-[#8A9A86] border-[#8A9A86] text-white" 
-                : "bg-transparent border-[#D1CEC7] text-transparent hover:border-[#8A9A86]"
-            )}
-          >
-            <Check className="w-3 h-3 stroke-[2.5]" />
-          </button>
-          
-          {editingTaskId === task.id ? (
-            <div className="flex flex-col gap-2 flex-1">
-              <input
-                autoFocus
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                onBlur={() => handleSaveEdit(task.id)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(task.id)}
-                className="flex-1 bg-transparent text-[15px] font-serif border-b border-[#8A9A86] focus:outline-none text-[#2C2C2C] py-0.5"
-              />
-              {task.type === 'one-time' && (
-                <div className="flex gap-2 mt-1">
-                  {(['low', 'medium', 'high'] as const).map(p => (
+        <SwipeActions
+          showEdit={showEdit}
+          onEdit={() => startEditing(task)}
+          onDelete={() => store.deleteTask(task.id)}
+        >
+          <div className="flex items-center justify-between py-4 border-b border-[#EAE8E3] transition-all duration-300 bg-transparent">
+            <div className="flex items-center gap-4 flex-1 overflow-hidden">
+              <button
+                onClick={() => store.toggleTaskCompletion(task.id)}
+                className={cn(
+                  "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-500",
+                  task.completed
+                    ? "bg-[#8A9A86] border-[#8A9A86] text-white"
+                    : "bg-transparent border-[#D1CEC7] text-transparent hover:border-[#8A9A86]"
+                )}
+              >
+                <Check className="w-3 h-3 stroke-[2.5]" />
+              </button>
+
+              {editingTaskId === task.id ? (
+                <div className="flex flex-col gap-2 flex-1">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={() => handleSaveEdit(task.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(task.id)}
+                    className="flex-1 bg-transparent text-[15px] font-serif border-b border-[#8A9A86] focus:outline-none text-[#2C2C2C] py-0.5"
+                  />
+                  {task.type === 'one-time' && (
+                    <div className="flex gap-2 mt-1">
+                      {(['low', 'medium', 'high'] as const).map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setEditPriority(p);
+                          }}
+                          className={cn(
+                            "text-[9px] uppercase tracking-widest px-2.5 py-0.5 rounded-full transition-all border",
+                            editPriority === p
+                              ? cn("text-white", priorityColors[p], priorityBorderColors[p])
+                              : cn("bg-transparent text-[#A09E9A] hover:text-[#2C2C2C]", priorityBorderColors[p])
+                          )}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                  <span className={cn(
+                    "text-[15px] font-serif tracking-wide truncate transition-all duration-500",
+                    task.completed ? "text-[#B0ADA5] line-through decoration-[#EAE8E3]" : "text-[#2C2C2C]"
+                  )}>
+                    {task.title}
+                  </span>
+                  {task.type === 'one-time' && task.priority && !task.completed && (
                     <button
-                      key={p}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setEditPriority(p);
-                      }}
-                      className={cn(
-                        "text-[9px] uppercase tracking-widest px-2.5 py-0.5 rounded-full transition-all border",
-                        editPriority === p 
-                          ? cn("text-white", priorityColors[p], priorityBorderColors[p])
-                          : cn("bg-transparent text-[#A09E9A] hover:text-[#2C2C2C]", priorityBorderColors[p])
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ))}
+                      onClick={() => cyclePriority(task.id, task.priority)}
+                      className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors", priorityColors[task.priority])}
+                      title={`Priority: ${task.priority}. Click to change.`}
+                    />
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2 flex-1 overflow-hidden">
-              <span className={cn(
-                "text-[15px] font-serif tracking-wide truncate transition-all duration-500",
-                task.completed ? "text-[#B0ADA5] line-through decoration-[#EAE8E3]" : "text-[#2C2C2C]"
-              )}>
-                {task.title}
-              </span>
-              {task.type === 'one-time' && task.priority && !task.completed && (
-                <button
-                  onClick={() => cyclePriority(task.id, task.priority)}
-                  className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors", priorityColors[task.priority])}
-                  title={`Priority: ${task.priority}. Click to change.`}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 ml-4 gap-2">
-          {task.type === 'one-time' && !task.completed && editingTaskId !== task.id && (
-            <button 
-              onClick={() => startEditing(task)}
-              className="p-1.5 text-[#C4C1B9] hover:text-[#8A9A86] transition-colors"
-            >
-              <Edit2 className="w-3.5 h-3.5 stroke-[1.5]" />
-            </button>
-          )}
-          <button 
-            onClick={() => store.deleteTask(task.id)}
-            className="p-1.5 text-[#C4C1B9] hover:text-[#A35D5D] transition-colors"
-          >
-            <X className="w-4 h-4 stroke-[1.5]" />
-          </button>
-        </div>
+          </div>
+        </SwipeActions>
       </motion.div>
     );
   };

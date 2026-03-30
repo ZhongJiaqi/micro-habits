@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/microHabits
+    // Document ID: {habitId}
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, < 100 chars)
+    //   - createdAt: string (required)
+    //   - active: boolean (required)
+    //   - userId: string (required, immutable)
+    //
+    // Collection: users/{userId}/tasks
+    // Document ID: {taskId}
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, < 100 chars)
+    //   - date: string (required)
+    //   - completed: boolean (required)
+    //   - type: string (required, 'habit' or 'one-time')
+    //   - habitId: string (optional)
+    //   - priority: string (optional, 'low', 'medium', 'high')
+    //   - userId: string (required, immutable)
+    //
+    // Collection: users/{userId}/habitPool
+    // Document ID: {poolId}
+    // Fields:
+    //   - id: string (required)
+    //   - habitId: string (required)
+    //   - title: string (required, < 100 chars)
+    //   - achievedDate: string (required)
+    //   - userId: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidMicroHabit() {
+      return hasRequiredFields(['id', 'title', 'createdAt', 'active', 'userId']) &&
+             validStringLength('id', 1, 50) &&
+             validStringLength('title', 1, 100) &&
+             request.resource.data.createdAt is string &&
+             request.resource.data.active is bool &&
+             request.resource.data.userId == request.auth.uid;
+    }
+
+    function isValidTask() {
+      return hasRequiredFields(['id', 'title', 'date', 'completed', 'type', 'userId']) &&
+             validStringLength('id', 1, 50) &&
+             validStringLength('title', 1, 100) &&
+             request.resource.data.date is string &&
+             request.resource.data.completed is bool &&
+             request.resource.data.type in ['habit', 'one-time'] &&
+             request.resource.data.userId == request.auth.uid &&
+             (!('habitId' in request.resource.data) || request.resource.data.habitId is string) &&
+             (!('priority' in request.resource.data) || request.resource.data.priority in ['low', 'medium', 'high']);
+    }
+
+    function isValidHabitPoolItem() {
+      return hasRequiredFields(['id', 'habitId', 'title', 'achievedDate', 'userId']) &&
+             validStringLength('id', 1, 50) &&
+             validStringLength('habitId', 1, 50) &&
+             validStringLength('title', 1, 100) &&
+             request.resource.data.achievedDate is string &&
+             request.resource.data.userId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      match /microHabits/{habitId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMicroHabit() && uidUnchanged();
+        allow update: if isOwner(userId) && isValidMicroHabit() && uidNotModified();
+        allow delete: if isOwner(userId);
+      }
+      
+      match /tasks/{taskId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTask() && uidUnchanged();
+        allow update: if isOwner(userId) && isValidTask() && uidNotModified();
+        allow delete: if isOwner(userId);
+      }
+      
+      match /habitPool/{poolId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidHabitPoolItem() && uidUnchanged();
+        allow update: if isOwner(userId) && isValidHabitPoolItem() && uidNotModified();
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

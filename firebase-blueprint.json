@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "MicroHabit": {
+      "title": "MicroHabit",
+      "description": "A small habit the user wants to build.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "active": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "createdAt", "active", "userId"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A daily task, either a one-time task or an instance of a habit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "type": { "type": "string", "enum": ["habit", "one-time"] },
+        "habitId": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "date", "completed", "type", "userId"]
+    },
+    "HabitPoolItem": {
+      "title": "HabitPoolItem",
+      "description": "A habit that has been completed for 21 days.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "habitId": { "type": "string" },
+        "title": { "type": "string" },
+        "achievedDate": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "habitId", "title", "achievedDate", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/microHabits/{habitId}": {
+      "schema": { "$ref": "#/entities/MicroHabit" },
+      "description": "User's micro habits."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User's tasks."
+    },
+    "/users/{userId}/habitPool/{poolId}": {
+      "schema": { "$ref": "#/entities/HabitPoolItem" },
+      "description": "User's completed 21-day habits."
+    }
+  }
+}

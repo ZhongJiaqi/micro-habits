@@ -4,30 +4,71 @@ import { Calendar, List, Clock } from 'lucide-react';
 import TodayView from './components/TodayView';
 import HabitsView from './components/HabitsView';
 import HistoryView from './components/HistoryView';
+import NotificationPrompt from './components/NotificationPrompt';
 import { useStore } from './useStore';
-import { auth } from './firebase';
-import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import { auth, db } from './firebase';
+import { requestPermissionAndSubscribe, isPushSupported } from './lib/messaging';
+import { signInWithGoogle, consumeRedirectResult } from './lib/auth';
+import { collection, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged, User, AuthError } from 'firebase/auth';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'today' | 'habits' | 'history'>('today');
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginPending, setLoginPending] = useState(false);
   const store = useStore(user?.uid);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const redirectError = await consumeRedirectResult(auth);
+      if (!cancelled && redirectError) {
+        setLoginError(`${redirectError.code ?? 'auth/unknown'} — ${redirectError.message ?? 'Redirect login failed'}`);
+      }
+    })();
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthReady(true);
+      if (currentUser) setLoginError(null);
     });
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
+  // Auto-recover push subscription: if permission is granted but no subscription in Firestore, re-register
+  useEffect(() => {
+    if (!user) return;
+    if (!isPushSupported() || Notification.permission !== 'granted') return;
+    (async () => {
+      try {
+        const subsSnap = await getDocs(collection(db, `users/${user.uid}/pushSubscriptions`));
+        if (subsSnap.empty) {
+          await requestPermissionAndSubscribe(user.uid);
+        }
+      } catch {
+        // Push not available in this browser context
+      }
+    })();
+  }, [user]);
+
   const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
+    setLoginError(null);
+    setLoginPending(true);
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithGoogle(auth);
     } catch (error) {
+      const e = error as AuthError;
+      const code = e?.code ?? 'auth/unknown';
+      const message = e?.message ?? String(error);
+      setLoginError(`${code} — ${message}`);
       console.error('Login failed:', error);
+    } finally {
+      setLoginPending(false);
     }
   };
 
@@ -43,10 +84,16 @@ export default function App() {
           <p className="text-[#8C8C8C] mb-12">Build better habits, one day at a time.</p>
           <button
             onClick={handleLogin}
-            className="w-full bg-[#1A1A1A] text-[#F9F8F6] py-4 rounded-2xl font-medium tracking-wide hover:bg-[#2C2C2C] transition-colors"
+            disabled={loginPending}
+            className="w-full bg-[#1A1A1A] text-[#F9F8F6] py-4 rounded-2xl font-medium tracking-wide hover:bg-[#2C2C2C] transition-colors disabled:opacity-60"
           >
-            Continue with Google
+            {loginPending ? 'Signing in...' : 'Continue with Google'}
           </button>
+          {loginError && (
+            <p className="mt-6 text-xs text-red-600 break-all leading-relaxed" role="alert">
+              {loginError}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -71,6 +118,11 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        {/* Notification Permission Prompt */}
+        <div className="px-8">
+          <NotificationPrompt userId={user.uid} />
+        </div>
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-28 relative px-8">

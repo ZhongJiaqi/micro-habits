@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 方案A：圆角方块 + 种子萌芽 -->
+  <rect width="512" height="512" rx="108" fill="#8A9A86"/>
+  <!-- 小芽 -->
+  <path d="M256 340 L256 260" stroke="#F9F8F6" stroke-width="24" stroke-linecap="round"/>
+  <path d="M256 260 Q256 220 230 200 Q260 210 256 260" fill="#F9F8F6"/>
+  <path d="M256 260 Q256 220 282 200 Q252 210 256 260" fill="#F9F8F6"/>
+  <!-- 土壤线 -->
+  <path d="M180 340 Q218 330 256 340 Q294 350 332 340" stroke="#F9F8F6" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.6"/>
+</svg>

@@ -82,6 +82,9 @@ export function useStore(userId?: string) {
       return;
     }
 
+    // Ensure user document exists (needed for Cloud Function to discover users)
+    setDoc(doc(db, `users/${userId}`), { lastSeen: new Date().toISOString() }, { merge: true }).catch(() => {});
+
     const microHabitsPath = `users/${userId}/microHabits`;
     const tasksPath = `users/${userId}/tasks`;
     const habitPoolPath = `users/${userId}/habitPool`;
@@ -149,7 +152,20 @@ export function useStore(userId?: string) {
       }
     });
 
-    // --- Step 2: Create missing tasks ---
+    // --- Step 2: Sync habit title to tasks if they diverged ---
+    const habitTitleMap = new Map(data.microHabits.map(h => [h.id, h.title]));
+    data.tasks.forEach(task => {
+      if (task.type === 'habit' && task.habitId) {
+        const habitTitle = habitTitleMap.get(task.habitId);
+        if (habitTitle && habitTitle !== task.title) {
+          const path = `users/${userId}/tasks/${task.id}`;
+          updateDoc(doc(db, path), { title: habitTitle }).catch(error =>
+            handleFirestoreError(error, OperationType.UPDATE, path));
+        }
+      }
+    });
+
+    // --- Step 3: Create missing tasks ---
     const existingHabitIds = new Set(todayHabitTasks.map(t => t.habitId));
 
     data.microHabits.forEach(habit => {
@@ -200,9 +216,8 @@ export function useStore(userId?: string) {
     try {
       await updateDoc(doc(db, path), { title });
       
-      // Also update today's uncompleted habit tasks to match the new title
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const tasksToUpdate = data.tasks.filter(t => t.habitId === id && t.date === today && !t.completed);
+      // Update ALL tasks for this habit (today + history)
+      const tasksToUpdate = data.tasks.filter(t => t.habitId === id);
       for (const task of tasksToUpdate) {
         const taskPath = `users/${userId}/tasks/${task.id}`;
         await updateDoc(doc(db, taskPath), { title }).catch(error => handleFirestoreError(error, OperationType.UPDATE, taskPath));

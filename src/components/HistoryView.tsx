@@ -10,7 +10,7 @@ export default function HistoryView({ store }: { store: any }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Calculate stats
-  const totalCompleted = tasks.filter((t: Task) => t.completed).length;
+
   const activeHabitsCount = microHabits.filter((h: any) => h.active).length;
 
   // Calculate Best Streak
@@ -138,11 +138,7 @@ export default function HistoryView({ store }: { store: any }) {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-3 gap-4 mb-16">
-        <div className="flex flex-col items-center justify-center text-center">
-          <span className="text-4xl font-serif font-light text-[#1A1A1A] mb-3">{totalCompleted}</span>
-          <span className="text-[9px] font-medium text-[#A09E9A] uppercase tracking-[0.2em]">Tasks<br/>Completed</span>
-        </div>
+      <div className="grid grid-cols-2 gap-4 mb-16">
         <div className="flex flex-col items-center justify-center text-center">
           <span className="text-4xl font-serif font-light text-[#1A1A1A] mb-3">{bestStreak}</span>
           <span className="text-[9px] font-medium text-[#A09E9A] uppercase tracking-[0.2em]">Best<br/>Streak</span>

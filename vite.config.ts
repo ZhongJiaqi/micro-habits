@@ -27,6 +27,9 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+          importScripts: ['/push-handler.js'],
+          // Firebase Auth OAuth handler 反代路径，必须直通到 Vercel rewrite，禁止 SW 拦截 + 替换为 SPA index.html
+          navigateFallbackDenylist: [/^\/__\//],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
@@ -43,7 +46,7 @@ export default defineConfig(({mode}) => {
       },
     },
     test: {
-      exclude: ['tests/e2e/**', 'node_modules/**'],
+      exclude: ['tests/e2e/**', 'node_modules/**', 'functions/**'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

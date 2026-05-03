@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 方案E：绿色底 + 白色圆环（循环/每日重复） + 中心小点（起点） -->
+  <rect width="512" height="512" rx="108" fill="#8A9A86"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#F9F8F6" stroke-width="28" stroke-dasharray="680" stroke-dashoffset="80" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="20" fill="#F9F8F6"/>
+</svg>

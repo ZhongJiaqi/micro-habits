@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 方案F：深色底 + 三个递增的竖条（每天进步一点点） -->
+  <rect width="512" height="512" rx="108" fill="#2C2C2C"/>
+  <rect x="158" y="300" width="44" height="80" rx="10" fill="#8A9A86" opacity="0.5"/>
+  <rect x="234" y="240" width="44" height="140" rx="10" fill="#8A9A86" opacity="0.75"/>
+  <rect x="310" y="170" width="44" height="210" rx="10" fill="#8A9A86"/>
+</svg>

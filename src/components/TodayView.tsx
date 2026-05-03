@@ -1,10 +1,11 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Check, Plus, X } from 'lucide-react';
 import SwipeActions from './SwipeActions';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { getTodayTaskStats } from '../lib/taskCompletion';
 import { Task } from '../types';
 
 const priorityColors = {
@@ -51,8 +52,7 @@ export default function TodayView({ store }: { store: any }) {
 
   const oneTimeTasks = todayTasks.filter((t: Task) => t.type === 'one-time').sort((a: Task, b: Task) => getWeight(b.priority) - getWeight(a.priority));
 
-  const dedupedTodayTasks = [...habitTasks, ...oneTimeTasks];
-  const allCompleted = dedupedTodayTasks.length > 0 && dedupedTodayTasks.every((t: Task) => t.completed);
+  const { allCompleted } = getTodayTaskStats(store.data.tasks, today);
 
   useEffect(() => {
     if (allCompleted) {
@@ -68,8 +68,7 @@ export default function TodayView({ store }: { store: any }) {
     }
   }, [allCompleted]);
 
-  const handleAddTask = (e: FormEvent) => {
-    e.preventDefault();
+  const handleAddTask = () => {
     if (!newTaskTitle.trim()) return;
     store.addOneTimeTask(newTaskTitle.trim(), today, newTaskPriority);
     setNewTaskTitle('');
@@ -231,26 +230,28 @@ export default function TodayView({ store }: { store: any }) {
 
         <AnimatePresence>
           {isAdding && (
-            <motion.form 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              onSubmit={handleAddTask} 
               className="mt-4 flex flex-col gap-3 border-b border-[#EAE8E3] pb-4 overflow-hidden"
             >
               <div className="flex items-center gap-3">
                 <input
                   autoFocus
                   type="text"
+                  enterKeyHint="done"
                   placeholder="Add a task..."
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTask(); } }}
                   className="flex-1 bg-transparent text-[15px] font-serif placeholder:text-[#C4C1B9] placeholder:italic focus:outline-none"
                 />
-                <button 
-                  type="submit"
+                <button
+                  type="button"
+                  onClick={handleAddTask}
                   disabled={!newTaskTitle.trim()}
-                  className="text-[#2C2C2C] disabled:opacity-30 transition-opacity"
+                  className="text-[#2C2C2C] disabled:opacity-30 transition-opacity p-2 -m-2"
                 >
                   <Plus className="w-4 h-4 stroke-[1.5]" />
                 </button>
@@ -275,7 +276,7 @@ export default function TodayView({ store }: { store: any }) {
                   ))}
                 </div>
               </div>
-            </motion.form>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

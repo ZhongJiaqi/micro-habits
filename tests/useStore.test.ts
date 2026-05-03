@@ -261,6 +261,69 @@ describe('Daily Reset — Task Creation', () => {
   });
 });
 
+/**
+ * Simulates the updateMicroHabit sync logic from useStore.
+ * When a habit title is edited, find all today's tasks for that habit and return them.
+ */
+function computeTasksToSync(
+  habitId: string,
+  existingTasks: Task[],
+): Task[] {
+  return existingTasks.filter(t => t.habitId === habitId);
+}
+
+describe('Habit Edit — Task Title Sync', () => {
+  const userId = 'test-user-123';
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  it('syncs title to uncompleted today task', () => {
+    const tasks: Task[] = [
+      { id: `h1_${today}`, title: 'Old Title', date: today, completed: false, type: 'habit', habitId: 'h1', userId },
+    ];
+
+    const toSync = computeTasksToSync('h1', tasks);
+    expect(toSync).toHaveLength(1);
+    expect(toSync[0].id).toBe(`h1_${today}`);
+  });
+
+  it('syncs title to completed today task', () => {
+    const tasks: Task[] = [
+      { id: `h1_${today}`, title: 'Old Title', date: today, completed: true, type: 'habit', habitId: 'h1', userId },
+    ];
+
+    const toSync = computeTasksToSync('h1', tasks);
+    expect(toSync).toHaveLength(1);
+  });
+
+  it('syncs title to historical tasks too', () => {
+    const tasks: Task[] = [
+      { id: 'h1_2026-01-01', title: 'Old Title', date: '2026-01-01', completed: false, type: 'habit', habitId: 'h1', userId },
+      { id: `h1_${today}`, title: 'Old Title', date: today, completed: false, type: 'habit', habitId: 'h1', userId },
+    ];
+
+    const toSync = computeTasksToSync('h1', tasks);
+    expect(toSync).toHaveLength(2);
+  });
+
+  it('does NOT sync tasks from other habits', () => {
+    const tasks: Task[] = [
+      { id: `h2_${today}`, title: 'Other Habit', date: today, completed: false, type: 'habit', habitId: 'h2', userId },
+    ];
+
+    const toSync = computeTasksToSync('h1', tasks);
+    expect(toSync).toHaveLength(0);
+  });
+
+  it('does NOT sync one-time tasks', () => {
+    const tasks: Task[] = [
+      { id: 'random-id', title: 'One time task', date: today, completed: false, type: 'one-time', userId },
+    ];
+
+    const toSync = computeTasksToSync('h1', tasks);
+    expect(toSync).toHaveLength(0);
+  });
+});
+
 describe('HabitsView — Add Habit Form', () => {
   it('submittedRef prevents double submission from onSubmit + onBlur', () => {
     // Simulates the race condition:

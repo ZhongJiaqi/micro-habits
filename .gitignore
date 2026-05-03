@@ -12,3 +12,5 @@ test-results/
 playwright-report/
 firebase-debug.log
 .firebase/
+.gstack/
+.superpowers/

@@ -30,6 +30,30 @@ export async function deleteOneTimeTasks(
   return oneTimeTasks.length;
 }
 
+export function calculateStreak(
+  habitId: string,
+  fromDate: string, // YYYY-MM-DD
+  allTasks: Pick<Task, 'habitId' | 'date' | 'completed'>[],
+): number {
+  const taskDates = new Set(
+    allTasks
+      .filter(t => t.habitId === habitId && t.completed)
+      .map(t => t.date)
+  );
+  let streak = 0;
+  const start = new Date(fromDate);
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(start.getTime() - i * 24 * 60 * 60 * 1000);
+    const ds = d.toISOString().slice(0, 10);
+    if (taskDates.has(ds)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -174,7 +198,7 @@ export function useStore(userId?: string) {
 
     // --- Step 1: Delete duplicate tasks ---
     // Group today's habit tasks by habitId, keep only one (prefer deterministic ID)
-    const todayHabitTasks = data.tasks.filter(t => t.date === today && t.type === 'habit' && t.habitId);
+    const todayHabitTasks = data.tasks.filter(t => t.date === today && t.habitId);
     const tasksByHabitId = new Map<string, Task[]>();
     todayHabitTasks.forEach(t => {
       const arr = tasksByHabitId.get(t.habitId!) || [];
@@ -197,7 +221,7 @@ export function useStore(userId?: string) {
     // --- Step 2: Sync habit title to tasks if they diverged ---
     const habitTitleMap = new Map(data.microHabits.map(h => [h.id, h.title]));
     data.tasks.forEach(task => {
-      if (task.type === 'habit' && task.habitId) {
+      if (task.habitId) {
         const habitTitle = habitTitleMap.get(task.habitId);
         if (habitTitle && habitTitle !== task.title) {
           const path = `users/${userId}/tasks/${task.id}`;
@@ -220,7 +244,6 @@ export function useStore(userId?: string) {
           title: habit.title,
           date: today,
           completed: false,
-          type: 'habit',
           habitId: habit.id,
           userId,
         } as Task).catch(error => handleFirestoreError(error, OperationType.CREATE, path));
@@ -229,7 +252,10 @@ export function useStore(userId?: string) {
   }, [data.microHabits, data.tasks, userId]);
 
   // --- Micro Habits ---
-  const addMicroHabit = async (title: string): Promise<MicroHabit | undefined> => {
+  const addMicroHabit = async (
+    title: string,
+    category: 'habit' | 'affirmation' = 'habit',
+  ): Promise<MicroHabit | undefined> => {
     if (!userId) return;
     const newHabitId = crypto.randomUUID();
     const newHabit: MicroHabit = {
@@ -238,6 +264,7 @@ export function useStore(userId?: string) {
       createdAt: new Date().toISOString(),
       active: true,
       userId,
+      category,
     };
     const habitPath = `users/${userId}/microHabits/${newHabitId}`;
     try {
@@ -287,26 +314,6 @@ export function useStore(userId?: string) {
   };
 
   // --- Tasks ---
-  const addOneTimeTask = async (title: string, date: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
-    if (!userId) return;
-    const newTaskId = crypto.randomUUID();
-    const newTask: Task = {
-      id: newTaskId,
-      title,
-      date,
-      completed: false,
-      type: 'one-time',
-      priority,
-      userId,
-    };
-    const path = `users/${userId}/tasks/${newTaskId}`;
-    try {
-      await setDoc(doc(db, path), newTask);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
-    }
-  };
-
   const toggleTaskCompletion = async (id: string) => {
     if (!userId) return;
     const task = data.tasks.find(t => t.id === id);
@@ -319,28 +326,14 @@ export function useStore(userId?: string) {
       await updateDoc(doc(db, path), { completed: newCompletedState });
 
       // Check for 21-day streak if it's a habit task being completed
-      if (newCompletedState && task.type === 'habit' && task.habitId) {
-        // We need to calculate streak. We can use the current data.tasks array
-        // but considering the current task is now completed.
-        const habitTasks = data.tasks
-          .filter(t => t.habitId === task.habitId && (t.completed || t.id === id))
-          .sort((a, b) => a.date.localeCompare(b.date));
-        
-        let currentStreak = 0;
-        let lastDate = new Date(task.date);
-        
-        // Simple streak calculation going backwards from today
-        for (let i = 0; i < 21; i++) {
-          const checkDate = format(new Date(lastDate.getTime() - i * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
-          if (habitTasks.some(t => t.date === checkDate)) {
-            currentStreak++;
-          } else {
-            break;
-          }
-        }
+      if (newCompletedState && task.habitId) {
+        // 包含当前刚被勾选的 task（虚拟 completed=true），计算 streak
+        const allTasksForStreak = data.tasks.map(t =>
+          t.id === id ? { ...t, completed: true } : t
+        );
+        const currentStreak = calculateStreak(task.habitId, task.date, allTasksForStreak);
 
         if (currentStreak >= 21) {
-          // Check if already in pool
           if (!data.habitPool.some(p => p.habitId === task.habitId)) {
             const newPoolId = crypto.randomUUID();
             const newPoolItem: HabitPoolItem = {
@@ -351,7 +344,8 @@ export function useStore(userId?: string) {
               userId,
             };
             const poolPath = `users/${userId}/habitPool/${newPoolId}`;
-            await setDoc(doc(db, poolPath), newPoolItem).catch(error => handleFirestoreError(error, OperationType.CREATE, poolPath));
+            await setDoc(doc(db, poolPath), newPoolItem).catch(error =>
+              handleFirestoreError(error, OperationType.CREATE, poolPath));
           }
         }
       }
@@ -397,7 +391,6 @@ export function useStore(userId?: string) {
     addMicroHabit,
     updateMicroHabit,
     deleteMicroHabit,
-    addOneTimeTask,
     toggleTaskCompletion,
     deleteTask,
     updateTask,

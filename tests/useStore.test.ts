@@ -15,7 +15,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { format } from 'date-fns';
-import { migrateMicroHabitCategory, deleteOneTimeTasks } from '../src/useStore';
+import { migrateMicroHabitCategory, deleteOneTimeTasks, calculateStreak } from '../src/useStore';
 
 // --- Extracted logic from useStore for testability ---
 
@@ -429,5 +429,38 @@ describe('Migration: hard-delete one-time tasks', () => {
 
     expect(deletedCount).toBe(0);
     expect(deleteDocMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('calculateStreak', () => {
+  it('returns 0 when no tasks completed', () => {
+    expect(calculateStreak('h1', '2026-05-03', [])).toBe(0);
+  });
+
+  it('counts consecutive completed days back from fromDate', () => {
+    const tasks = [
+      { habitId: 'h1', date: '2026-05-03', completed: true },
+      { habitId: 'h1', date: '2026-05-02', completed: true },
+      { habitId: 'h1', date: '2026-05-01', completed: true },
+      { habitId: 'h1', date: '2026-04-29', completed: true }, // gap on 2026-04-30
+    ];
+    expect(calculateStreak('h1', '2026-05-03', tasks)).toBe(3);
+  });
+
+  it('treats incomplete tasks as breaks', () => {
+    const tasks = [
+      { habitId: 'h1', date: '2026-05-03', completed: true },
+      { habitId: 'h1', date: '2026-05-02', completed: false }, // break
+      { habitId: 'h1', date: '2026-05-01', completed: true },
+    ];
+    expect(calculateStreak('h1', '2026-05-03', tasks)).toBe(1);
+  });
+
+  it('ignores other habits', () => {
+    const tasks = [
+      { habitId: 'h1', date: '2026-05-03', completed: true },
+      { habitId: 'h2', date: '2026-05-02', completed: true },
+    ];
+    expect(calculateStreak('h1', '2026-05-03', tasks)).toBe(1);
   });
 });

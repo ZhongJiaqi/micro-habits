@@ -14,6 +14,22 @@ export async function migrateMicroHabitCategory(
   await setDocFn(doc(db, path), { category: 'habit' }, { merge: true });
 }
 
+export async function deleteOneTimeTasks(
+  tasks: any[],
+  userId: string,
+  deleteDocFn: typeof deleteDoc = deleteDoc,
+): Promise<number> {
+  const oneTimeTasks = tasks.filter(t => t.type === 'one-time');
+  if (oneTimeTasks.length === 0) return 0;
+  console.log(`[migration] deleting ${oneTimeTasks.length} legacy one-time tasks`);
+  await Promise.all(
+    oneTimeTasks.map(t =>
+      deleteDocFn(doc(db, `users/${userId}/tasks/${t.id}`)).catch(() => {})
+    )
+  );
+  return oneTimeTasks.length;
+}
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -86,6 +102,7 @@ export function useStore(userId?: string) {
 
   useEffect(() => {
     tasksLoadedRef.current = false;
+    const oneTimeMigrationDoneRef = { current: false };
     createdTaskIdsRef.current = new Set();
     if (!userId) {
       setData(defaultData);
@@ -117,7 +134,16 @@ export function useStore(userId?: string) {
     });
 
     const unsubTasks = onSnapshot(query(tasksRef), (snapshot) => {
-      const tasks = snapshot.docs.map(doc => doc.data() as Task);
+      const rawTasks = snapshot.docs.map(doc => doc.data() as any);
+      // One-shot migration: delete legacy one-time tasks
+      if (!oneTimeMigrationDoneRef.current) {
+        oneTimeMigrationDoneRef.current = true;
+        deleteOneTimeTasks(rawTasks, userId).catch(() => {
+          oneTimeMigrationDoneRef.current = false; // retry next snapshot
+        });
+      }
+      // Filter out one-time tasks from the live data immediately
+      const tasks = rawTasks.filter(t => t.type !== 'one-time') as Task[];
       tasksLoadedRef.current = true;
       setData(prev => ({ ...prev, tasks }));
     }, (error) => {

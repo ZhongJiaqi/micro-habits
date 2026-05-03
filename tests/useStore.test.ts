@@ -15,7 +15,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { format } from 'date-fns';
-import { migrateMicroHabitCategory } from '../src/useStore';
+import { migrateMicroHabitCategory, deleteOneTimeTasks } from '../src/useStore';
 
 // --- Extracted logic from useStore for testability ---
 
@@ -401,5 +401,33 @@ describe('Migration: backfill category for legacy MicroHabit', () => {
     await migrateMicroHabitCategory(affirmationHabit as any, 'u1', setDocMock);
 
     expect(setDocMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('Migration: hard-delete one-time tasks', () => {
+  it('deletes tasks where type === "one-time"', async () => {
+    const deleteDocMock = vi.fn().mockResolvedValue(undefined);
+    const tasks = [
+      { id: 't1', title: 'walk', date: '2026-05-03', completed: false, habitId: 'h1', userId: 'u1', type: 'habit' },
+      { id: 't2', title: 'one-off thing', date: '2026-05-03', completed: false, userId: 'u1', type: 'one-time', priority: 'high' },
+      { id: 't3', title: 'read', date: '2026-05-03', completed: true, habitId: 'h2', userId: 'u1', type: 'habit' },
+    ] as any[];
+
+    const deletedCount = await deleteOneTimeTasks(tasks, 'u1', deleteDocMock);
+
+    expect(deletedCount).toBe(1);
+    expect(deleteDocMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 0 when no one-time tasks exist (idempotent)', async () => {
+    const deleteDocMock = vi.fn();
+    const tasks = [
+      { id: 't1', title: 'walk', date: '2026-05-03', completed: false, habitId: 'h1', userId: 'u1' },
+    ] as any[];
+
+    const deletedCount = await deleteOneTimeTasks(tasks, 'u1', deleteDocMock);
+
+    expect(deletedCount).toBe(0);
+    expect(deleteDocMock).not.toHaveBeenCalled();
   });
 });

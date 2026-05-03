@@ -80,8 +80,9 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F9F8F6] text-[#2C2C2C] font-sans flex flex-col items-center justify-center selection:bg-[#E2DFD8]">
         <div className="w-full max-w-md p-8 text-center">
-          <h1 className="text-4xl font-serif font-medium tracking-widest text-[#1A1A1A] mb-4">Micro Habits</h1>
-          <p className="text-[#8C8C8C] mb-12">Build better habits, one day at a time.</p>
+          <h1 className="text-4xl font-serif font-medium tracking-widest text-[#1A1A1A] mb-4">Becoming</h1>
+          <p className="text-[#8C8C8C] mb-2 text-sm leading-relaxed italic">&ldquo;Every action you take is a vote for the type of person you wish to become.&rdquo;</p>
+          <p className="text-[10px] text-[#A09E9A] tracking-widest uppercase mb-12">— James Clear</p>
           <button
             onClick={handleLogin}
             disabled={loginPending}
@@ -105,7 +106,7 @@ export default function App() {
         
         {/* Header */}
         <header className="px-8 pt-12 pb-6 flex items-end justify-between sticky top-0 bg-gradient-to-b from-[#F9F8F6] via-[#F9F8F6] to-transparent z-10">
-          <h1 className="text-2xl font-serif font-medium tracking-widest text-[#1A1A1A]">Micro Habits</h1>
+          <h1 className="text-2xl font-serif font-medium tracking-widest text-[#1A1A1A]">Becoming</h1>
           <div className="flex flex-col items-end gap-1">
             <div className="text-[10px] font-medium tracking-[0.2em] text-[#8C8C8C] uppercase">
               {new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}

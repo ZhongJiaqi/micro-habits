@@ -1,109 +1,111 @@
-# Becoming —  Rebrand + Affirmation Module Design
+# Becoming —— 改名 + 肯定语模块设计
 
-- **Date**: 2026-05-03
-- **Author**: ZhongJiaqi
-- **Status**: Approved (brainstorm phase complete, ready for implementation plan)
-- **Brainstorm session**: `~/.gstack/brainstorm/57175-1777781785/` (logs preserved)
-- **Implementation plan**: TBD（next: invoke `superpowers:writing-plans` skill）
-
----
-
-## 1. Background
-
-### What we have today
-
-`Micro Habits` is a single-page React 19 PWA backed by Firebase, deployed on Vercel. The user has been using it for personal daily practice — both real habits (e.g. "30-min walk") **and** positive affirmations ("I am enough.") logged as habits. One-time tasks were also part of the model but are essentially unused.
-
-### Pain points the user reported
-
-1. **混乱感**: affirmations and habits are rendered in the same flat task list with identical styling — visually a single category, mentally two different things ("doing" vs "saying").
-2. **One-time tasks 几乎没有使用**: the entire one-time task code path (creation UI, priority field, type field) is dead weight.
-3. **产品定位模糊**: the user wants to keep using the app personally **and** wants to polish it for eventual public release. Current name `Micro Habits` over-anchors on "habits" and excludes affirmations.
-
-### What this spec covers
-
-- Rebrand the product to **Becoming**.
-- Introduce **affirmations** as a first-class content type (sibling to habits), not a content variant smuggled into habits.
-- Restructure Today / Practice / History to render affirmations and habits as visually distinct sections.
-- Remove one-time tasks (code + data).
-- Lazy-migrate existing data with zero user disruption.
-
-### Out of scope
-
-- Push notifications / `dailyTaskReminder` Cloud Function — independent module, untouched.
-- Firestore collection rename (`microHabits` / `tasks` / `habitPool`) — kept as-is to avoid full migration; future "Becoming v2" can rename if desired.
-- New growth features (sharing, social, multi-device sync) — pure refactor + rebrand.
+- **日期**：2026-05-03
+- **作者**：ZhongJiaqi
+- **状态**：已批准（brainstorm 阶段完成，可进入实施计划阶段）
+- **Brainstorm 会话**：`~/.gstack/brainstorm/57175-1777781785/`（日志已保留）
+- **实施计划**：待定（下一步：调用 `superpowers:writing-plans` skill）
 
 ---
 
-## 2. Product Positioning (Becoming)
+## 1. 背景
 
-### Core idea
+### 现状
 
-Behavior science: **Thought → Action → Destiny**. Backed by:
-- Cialdini's commitment-and-consistency principle.
-- William James / Aristotle on habit-as-identity.
-- James Clear's *Atomic Habits* identity-based habits.
-- Pygmalion / Rosenthal's self-fulfilling prophecy research.
+`Micro Habits` 是一个基于 Firebase + Vercel 的 React 19 单页 PWA 应用。用户用它做每日打卡——既包括真实习惯（如「散步 30 分钟」），**也**包括以习惯形式记录的积极肯定语（如「I am enough.」）。one-time task 也是数据模型的一部分，但实际几乎没用。
 
-The app is a **daily practice surface** that uses the same打卡 mechanic for two complementary content types:
+### 用户反馈的痛点
 
-- **Affirmations** — the "thought" repetition layer (what you tell yourself每天念一遍).
-- **Habits** — the "action" repetition layer (what you do).
+1. **混乱感**：肯定语和习惯被放在同一个扁平的 task 列表里、用同样的样式渲染——视觉上是一类，心理上却是两类（「做」 vs 「念」）。
+2. **One-time tasks 几乎没有使用**：整条 one-time 代码路径（创建 UI、priority 字段、type 字段）都是死代码。
+3. **产品定位模糊**：用户既要继续自己用，又希望打磨好后能给别人用。当前名字 `Micro Habits` 过度锚定在「习惯」上，把肯定语排除在外。
 
-Together they form an integrated "I become what I think and do, repeated daily" loop.
+### 本 spec 涵盖范围
 
-### Why "Becoming"
+- 把产品改名为 **Becoming**。
+- 引入 **肯定语 (affirmations)** 作为一等公民的内容类型（与习惯并列），不再藏在习惯里冒充。
+- 重构 Today / Practice / History 三个页面，让肯定语和习惯**视觉上可区分**地分组渲染。
+- 删除 one-time task（代码 + 数据）。
+- 用懒迁移策略平滑迁移现有数据，用户零打扰。
 
-- Comes directly from James Clear: *"Every action you take is a vote for the type of person you wish to **become**."*
-- "-ing" tense conveys process over endpoint — central to growth psychology.
-- One word, logo-friendly, distinctive in the habits-app space (Streaks / Habitica / Productive / etc. are all noun- or activity-anchored; "Becoming" is identity-anchored).
-- Bilingual usability: in Chinese context "成为" is also clean; can leave English untranslated for brand purity.
+### 不在范围内
 
-### Tagline
+- 推送通知 / `dailyTaskReminder` Cloud Function —— 独立模块，不动。
+- Firestore 集合重命名（`microHabits` / `tasks` / `habitPool`）—— 维持原名，避免全量数据迁移；未来 Becoming v2 想改再改。
+- 新增功能（分享、社交、多端同步）—— 纯重构 + 改名，不加新功能。
+
+---
+
+## 2. 产品定位（Becoming）
+
+### 核心理念
+
+行为科学链条：**思想 → 行为 → 命运**。背书：
+
+- Cialdini 承诺与一致原则。
+- William James / Aristotle 关于「习惯即身份」的论述。
+- James Clear《Atomic Habits》中基于身份的习惯（identity-based habits）。
+- Pygmalion / Rosenthal 自我实现预言研究。
+
+应用是一个 **每日实践承载面 (daily practice surface)**，对两类互补的内容使用同一种打卡机制：
+
+- **Affirmations（肯定语）** —— 「思想」的重复层（你每天对自己说什么）。
+- **Habits（习惯）** —— 「行为」的重复层（你每天做什么）。
+
+二者一起构成完整的闭环：「我每天**重复**地想什么、做什么，决定我成为什么样的人」。
+
+### 为什么叫「Becoming」
+
+- 直接来自 James Clear 的引文：*"Every action you take is a vote for the type of person you wish to **become**."*
+- 「-ing」时态强调过程而非终点，契合成长心理学的核心。
+- 单个英文词，做 logo 简洁；在 habits-app 这片红海里独特（Streaks / Habitica / Productive 都是名词或行为锚点；Becoming 是身份锚点）。
+- 中英都好用：中文语境里「成为」也很干净；为品牌纯度可保留英文不译。
+
+### Tagline（产品标语）
 
 > *Every action you take is a vote for the type of person you wish to become.*
-> — James Clear, *Atomic Habits*
+> —— James Clear, *Atomic Habits*
 
-Used on:
-- Login page subtitle (replaces *"Build better habits, one day at a time."*)
-- Practice tab introduction (replaces *"Small, effortless actions. They will appear automatically..."*)
+使用位置：
 
-### What we are NOT
+- 登录页 subtitle（替换原来的 *"Build better habits, one day at a time."*）
+- Practice tab 引导文案（替换原来的 *"Small, effortless actions. They will appear automatically..."*）
 
-- Not a generic to-do app (no one-time tasks).
-- Not a meditation app (no audio, no timers — the "moment" is just the act of acknowledging the affirmation).
-- Not a social habit tracker (no leaderboards, no public sharing).
+### 我们 NOT 是什么
+
+- 不是通用 to-do 应用（没 one-time task）。
+- 不是冥想应用（没音频、没计时器——「时刻」就是承认肯定语本身这个动作）。
+- 不是社交习惯追踪器（没排行榜、没公开分享）。
 
 ---
 
-## 3. Information Architecture
+## 3. 信息架构 (IA)
 
-### Bottom tab bar
+### 底部 tab 栏
 
 ```
 [ Today ]   [ Practice ]   [ History ]
 ```
 
-| Tab | Old name | New name | What it does |
+| Tab | 旧名 | 新名 | 做什么 |
 |---|---|---|---|
-| Today | Today | Today | Daily check-in — both affirmations and habits, in two visually distinct sections |
-| Practice | Habits | **Practice** | Manage (CRUD) affirmations and habits in two grouped sections |
-| History | History | History | Calendar heatmap, streaks, Hall of Fame — with a filter for All / Habits / Affirmations |
+| Today | Today | Today | 每日打卡——肯定语和习惯，分两个视觉上区分的 section |
+| Practice | Habits | **Practice** | 管理（CRUD）肯定语和习惯，分两个 section 同屏 |
+| History | History | History | 日历热力图、streak、Hall of Fame——带 All / Habits / Affirmations 过滤器 |
 
-App name (top-left header) and login page brand text become **Becoming**.
+应用名（左上 header）和登录页品牌文字改为 **Becoming**。
 
-### Section ordering inside Today and Practice
+### Today 和 Practice 内的 section 顺序
 
-**Affirmations first, Habits second.** Mirrors the natural morning ritual: read your affirmations to set intention, then do the actions. Reverses the original recommendation that put habits first.
+**肯定语在上，习惯在下。** 镜像自然的早晨仪式：先读肯定语定意图，再做行动。颠覆了最初「先做后说」的推荐。
 
-### Hall of Fame placement
+### Hall of Fame 位置
 
-Stays at the bottom of History tab. **One unified hall**, no separation between affirmation 21-day achievements and habit 21-day achievements (consistent with the "merged streak" mental model — see §5.2).
+继续放 History tab 底部。**不分类的统一 Hall**，肯定语连续 21 天和习惯连续 21 天的成就都进同一个 Hall（与 §5.2「合并 streak」心智一致）。
 
 ---
 
-## 4. Data Model
+## 4. 数据模型
 
 ### `MicroHabit`
 
@@ -114,11 +116,11 @@ export interface MicroHabit {
   createdAt: string;
   active: boolean;
   userId: string;
-  category: 'habit' | 'affirmation';   // NEW — defaults to 'habit' for legacy data
+  category: 'habit' | 'affirmation';   // 新增 —— 旧数据默认 'habit'
 }
 ```
 
-- `category` is the single source of truth for which section a microHabit belongs to. **Set at creation, immutable in v1** — the UI does not expose a "move between categories" action; the user can delete and re-add if needed. Future v2 may allow re-categorization if real demand emerges.
+- `category` 是某条 microHabit 归属哪个 section 的唯一真相来源。**创建时设定，v1 不可变**——UI 不提供「跨类移动」操作；用户需要的话可以删了重建。如果未来 v2 出现真实需求，再考虑加重新分类功能。
 
 ### `Task`
 
@@ -128,65 +130,65 @@ export interface Task {
   title: string;
   date: string;            // YYYY-MM-DD
   completed: boolean;
-  habitId: string;         // NOW REQUIRED (was optional)
+  habitId: string;         // 现在是必填（之前是 optional）
   userId: string;
-  // REMOVED: type: 'habit' | 'one-time'
-  // REMOVED: priority?: 'low' | 'medium' | 'high'
+  // 删除：type: 'habit' | 'one-time'
+  // 删除：priority?: 'low' | 'medium' | 'high'
 }
 ```
 
-- All tasks now derive from a parent microHabit (one-time tasks are gone, see §5.4).
-- A task's category is **derived** at read time via `microHabits.find(h => h.id === task.habitId)?.category`. **Not duplicated** on the task document — single source of truth.
+- 现在所有 task 都派生自某条 microHabit（one-time task 已删，见 §5.4）。
+- task 的 category **不冗余存储**，读取时通过 `microHabits.find(h => h.id === task.habitId)?.category` 派生。**单一真相来源**。
 
-### `HabitPoolItem` (Hall of Fame)
+### `HabitPoolItem`（Hall of Fame）
 
-Unchanged. Triggered when a microHabit (regardless of category) hits 21 consecutive days.
-
----
-
-## 5. Behavior
-
-### 5.1 Affirmation lifecycle
-
-- Same as habit: written once via Practice page, appears daily on Today, completed by tapping the checkbox, resets next morning.
-- Daily reset effect in `useStore.ts` creates a new task for each active affirmation each day, deterministic ID `{habitId}_{date}` (existing pattern, no change).
-
-### 5.2 Streak / "perfect day" semantics
-
-- A "perfect day" = **all** tasks for that day completed (both affirmations and habits, merged). Existing behavior, untouched.
-- This is the user's chosen mental model: missing one affirmation breaks the streak the same way missing one habit does. Up to the user to keep affirmation count manageable.
-- History page filter (§5.6) is a **view lens** that re-projects streak / heatmap / weekly progress, but does NOT alter the canonical streak number written to `habitPool` (Hall of Fame still triggers on the per-microHabit 21-day rule).
-
-### 5.3 Hall of Fame trigger
-
-- When a task is marked completed, walk back 21 days for that `habitId`. If 21 consecutive completions exist and `habitPool` does not yet contain this `habitId`, write a new `HabitPoolItem`.
-- **Code change**: `useStore.ts:280` currently filters `task.type === 'habit'`. Remove that filter — all tasks are now habit-derived, and affirmations 21-day streaks are intentionally celebrated equally.
-
-### 5.4 One-time tasks: hard delete
-
-- All existing `task.type === 'one-time'` documents are **deleted from Firestore** during the next migration pass.
-- Rationale: user reports near-zero usage; soft-delete carries forward dead state forever.
-- Safety net: log the count to console before deletion; Firebase PITR provides 7-day rollback if a user discovers post-hoc data loss (acceptable risk for personal app).
-- Code: remove all UI and store functions relating to one-time creation, priority field, and per-task editing.
-
-### 5.5 Lazy migration on read
-
-- On `useStore` mount, after data is loaded, scan `data.microHabits`. For any habit without a `category` field, write `setDoc(doc, { category: 'habit' }, { merge: true })` to backfill.
-- Same migration effect runs the one-time task cleanup pass (single migration cycle).
-- All read paths use `habit.category ?? 'habit'` as a defensive fallback during the rollout window.
-
-### 5.6 History filter
-
-- Top of History page: a 3-segment toggle `[ All | Habits | Affirmations ]`, styled to match existing uppercase letterspaced tabs.
-- Filter state is **NOT persisted** — defaults to `All` every time the user enters History (avoids the "I switched to Habits last week and now my streak looks wrong" confusion).
-- All History panels (calendar dots, Best Streak, Active Practices, Weekly Progress bars) reflect the active filter.
-- The "Active Habits" stat is renamed **"Active Practices"** under All; under filtered views, it counts only that category.
+不变。当某条 microHabit（不分 category）连续打卡 21 天时触发写入。
 
 ---
 
-## 6. UI Design
+## 5. 行为
 
-### 6.1 Today page
+### 5.1 肯定语生命周期
+
+- 跟习惯一样：在 Practice 页写一次，每天在 Today 出现，点击 checkbox 完成，第二天早上重置。
+- `useStore.ts` 里的 daily reset effect 每天为每条 active 肯定语创建一个新的 task，使用确定性 ID `{habitId}_{date}`（沿用现有模式，不变）。
+
+### 5.2 Streak / 「完美日」语义
+
+- 「完美日」= 当天**所有** task 全部完成（肯定语和习惯**合并算**）。沿用现有逻辑，不动。
+- 这是用户选定的心智模型：漏一条肯定语和漏一条习惯一样会断 streak。控制肯定语数量在合理范围内是用户自己的事。
+- History 页的 filter（§5.6）是**视图镜头**，会重新投影 streak / 热力图 / 周进度，但**不改变** `habitPool` 里写入的 streak 数值（Hall of Fame 仍按「单条 microHabit 连续 21 天」规则触发）。
+
+### 5.3 Hall of Fame 触发
+
+- 当某条 task 被标记完成时，针对该 `habitId` 往前数 21 天。如果存在 21 天连续完成且 `habitPool` 里还没有这条 `habitId`，则写入新的 `HabitPoolItem`。
+- **代码改动**：`useStore.ts:280` 当前过滤了 `task.type === 'habit'`。删除这个过滤——现在所有 task 都来自 habit，肯定语连续 21 天也应该被同等庆祝。
+
+### 5.4 One-time tasks：硬删除
+
+- 所有现存的 `task.type === 'one-time'` 文档将在下一次迁移过程中**从 Firestore 删除**。
+- 理由：用户报告几乎没用过；软删除会让死状态永远留着。
+- 安全网：删除前 console.log 数量；Firebase PITR (Point-in-Time Recovery) 提供 7 天回滚窗口，万一发现误删可以恢复（个人应用风险可接受）。
+- 代码：移除所有跟 one-time 创建、priority 字段、单 task 编辑相关的 UI 和 store 函数。
+
+### 5.5 读取时懒迁移
+
+- `useStore` 挂载、Firestore 数据订阅就绪后，扫描 `data.microHabits`。任何不带 `category` 字段的 habit，调用 `setDoc(doc, { category: 'habit' }, { merge: true })` 补字段。
+- 同一个 migration effect 里同时跑 one-time task 清理（一个 cycle 完成全部迁移）。
+- 所有读取路径用 `habit.category ?? 'habit'` 作为 defensive fallback，过渡期保留。
+
+### 5.6 History 过滤器
+
+- History 页顶部：3 段 toggle `[ All | Habits | Affirmations ]`，沿用现有的 uppercase letterspaced 标签风格。
+- Filter 状态**不持久化**——每次进 History 默认 `All`（避免「上次切到 Habits 看，这次进来 streak 看着像断了」的困惑）。
+- History 所有面板（日历点、Best Streak、Active Practices、Weekly Progress 柱状图）都按当前 filter 投影。
+- 「Active Habits」统计指标在 All 视图下改名为 **「Active Practices」**；在 filter 视图下只数对应类别。
+
+---
+
+## 6. UI 设计
+
+### 6.1 Today 页
 
 ```
 [Header]    Becoming                              May 03 ▾
@@ -205,16 +207,16 @@ Unchanged. Triggered when a microHabit (regardless of category) hits 21 consecut
 [Bottom nav]   Today  ·  Practice  ·  History
 ```
 
-#### Visual rules
+#### 视觉规则
 
-- **Section labels**: existing `text-[10px] font-medium text-[#A09E9A] uppercase tracking-[0.2em]`. Same style as elsewhere — no new heading hierarchy.
-- **Affirmation rendering**: `font-style: italic`, with `"..."` ASCII double quotes added via CSS `::before` / `::after` pseudo-elements. Quotes are display-only, never persisted in `title`.
-- **Habit rendering**: existing `font-serif` upright. The visual contrast with affirmations is the whole point.
-- **Completion state**: round checkbox fills `#8A9A86` (existing color), text gets `line-through` + lighter color. Same for both categories.
-- **Empty section handling**: if a category has zero active microHabits, **do not render the section label** — avoids stranded labels with nothing under them.
-- **Order**: Affirmations always above Habits. Hard-coded, not user-configurable for v1.
+- **Section 标题**：沿用现有 `text-[10px] font-medium text-[#A09E9A] uppercase tracking-[0.2em]`。跟其他地方风格一致——不引入新的标题层级。
+- **肯定语渲染**：`font-style: italic`，通过 CSS `::before` / `::after` 伪元素自动加 `"..."` 双引号。引号只是显示用，**不存进** `title` 字段。
+- **习惯渲染**：保持现有 `font-serif` 正立。跟肯定语形成视觉对比——这是分组的整个意义。
+- **完成态**：圆形 checkbox 填充 `#8A9A86`（沿用现有色），文字 `line-through` + 颜色变浅。两类一致。
+- **空 section 处理**：某一类没设置过任何 active microHabit 时，**整个 section 标题不渲染**——避免孤零零的「Affirmations」标题挂在那里没东西。
+- **顺序**：肯定语永远在习惯之上。硬编码，v1 不允许用户配置。
 
-### 6.2 Practice page (renamed from Habits)
+### 6.2 Practice 页（原 Habits 页改名）
 
 ```
 Practice
@@ -232,20 +234,20 @@ you wish to become.   — James Clear
        + Add Habit
 ```
 
-- Numeric markers (`01`, `02`) preserved per existing `HabitsView.tsx` style — these are positional indicators, not stable IDs.
-- Two **separate** + buttons (`+ Add Affirmation`, `+ Add Habit`) — explicit category at creation time, no toggle, no select. Tapping the button opens the same inline-input form, just with `category` pre-set.
-- Empty state copy:
-  - Habits empty: existing *"The beginning of a new chapter."*
-  - Affirmations empty: NEW *"Words you live by, repeated."*
-- Edit / delete via existing `SwipeActions` component, unchanged.
-- Tagline (James Clear quote) replaces existing *"Small, effortless actions..."* prose. Smaller text, lighter color, `text-[#8C8C8C]` consistent with existing intro style.
+- 数字标记 (`01`, `02`) 沿用现有 `HabitsView.tsx` 风格——这是位置标识，不是稳定 ID。
+- 两个**独立**的 + 按钮（`+ Add Affirmation`, `+ Add Habit`）——创建时 category 显式确定，没有 toggle、没有 select。点按钮打开同一个 inline-input 表单，只是 `category` 已经预设好了。
+- 空态文案：
+  - Habits 空：沿用 *"The beginning of a new chapter."*
+  - Affirmations 空：新文案 *"Words you live by, repeated."*
+- 编辑 / 删除沿用现有 `SwipeActions` 组件，不变。
+- Tagline (James Clear 引文) 替换现有的 *"Small, effortless actions..."* 文案。小字号、浅色 `text-[#8C8C8C]`，跟现有引导文案样式一致。
 
-### 6.3 History page
+### 6.3 History 页
 
 ```
 HISTORY                  [All | Habits | Affirmations]   ‹ May 2026 ›
 
-[ calendar grid — green dots on perfect days, scoped by filter ]
+[ 日历网格 —— 完美日绿圆点，按 filter 投影 ]
 
       [Best Streak]      [Active Practices]
           21                    6
@@ -262,138 +264,138 @@ HISTORY                  [All | Habits | Affirmations]   ‹ May 2026 ›
     23 DAYS COMPLETED
 ```
 
-- Filter toggle styled like existing labels.
-- Hall of Fame: unified list, affirmations rendered with italic + quotes (consistent with Today / Practice).
-- Empty Hall: existing *"Consistency builds character."*
+- Filter toggle 风格跟现有标签一致。
+- Hall of Fame：统一列表，肯定语 entry 用 italic + 引号渲染（跟 Today / Practice 一致）。
+- 空 Hall：沿用 *"Consistency builds character."*
 
-### 6.4 Login page
+### 6.4 登录页
 
-- Brand text `Micro Habits` → **`Becoming`**.
-- Subtitle `Build better habits, one day at a time.` → **`Every action you take is a vote for the type of person you wish to become.`**.
-- Sign-in button (`Continue with Google`) unchanged.
+- 品牌文字 `Micro Habits` → **`Becoming`**。
+- Subtitle `Build better habits, one day at a time.` → **`Every action you take is a vote for the type of person you wish to become.`**。
+- 登录按钮 (`Continue with Google`) 不变。
 
 ### 6.5 Header
 
-- App title in header `Micro Habits` → `Becoming`.
-- All other header layout / behavior unchanged (date, sign out).
+- Header 里的应用标题 `Micro Habits` → `Becoming`。
+- Header 其他布局 / 行为不变（日期、Sign Out）。
 
 ---
 
-## 7. File Change Plan
+## 7. 文件改动清单
 
-| File | Action |
+| 文件 | 改动 |
 |---|---|
-| `src/types.ts` | Add `category` to `MicroHabit`. Remove `type` and `priority` from `Task`, change `habitId` to required. |
-| `src/firebase.ts` | (No change for this spec.) |
-| `src/useStore.ts` | (1) Add lazy migration effect: backfill `category='habit'`, delete all `type==='one-time'` tasks. (2) Remove `t.type === 'habit'` filter from streak / Hall of Fame trigger. (3) Remove any `addOneTimeTask` / one-time-related store functions. (4) Update `addMicroHabit` signature to accept `category`. |
-| `src/App.tsx` | (1) Replace `Micro Habits` brand text with `Becoming` (login page header + main header). (2) Replace login subtitle with James Clear tagline. (3) Rename `HabitsView` import to `PracticeView`. (4) Update bottom-nav label `Habits` → `Practice`. |
-| `src/components/HabitsView.tsx` → `src/components/PracticeView.tsx` | Rename file. Refactor to two grouped sections (Affirmations, Habits) with separate `+ Add` buttons. Replace intro prose with James Clear tagline. Add affirmation empty-state copy. |
-| `src/components/TodayView.tsx` | (1) Remove all one-time UI (edit input, priority chip). (2) Group tasks into two sections by `microHabits.find(h => h.id === t.habitId)?.category`. (3) Add italic + quote styling for affirmations. (4) Hide section labels when empty. |
-| `src/components/HistoryView.tsx` | (1) Remove `t.type === 'habit'` filter (line ~189). (2) Add filter toggle UI (All / Habits / Affirmations). (3) Apply filter to calendar dots, Best Streak, Active Practices, Weekly Progress. (4) Rename "Active Habits" stat label to "Active Practices". (5) Hall of Fame: render affirmations with italic + quotes. |
-| `src/components/SwipeActions.tsx` | (No change.) |
-| `tests/useStore.test.ts` | Update mock data to remove `type`, add `category`. Add test for lazy migration: legacy habit without `category` gets backfilled. Add test for one-time deletion path. Update Hall of Fame tests to assert affirmation 21-day triggers entry. |
-| `firestore.rules` | Optional: add `category` field validation in `isValidMicroHabit()`. Defer to implementation phase if safe to skip. |
-| `index.html` | Update `<title>` from `MicroHabits` to `Becoming`. |
-| `vite.config.ts` (PWA manifest) | Update `name` and `short_name` from `MicroHabits` to `Becoming`. |
-| `public/manifest.webmanifest` | (Generated by vite-plugin-pwa from config above; no manual edit.) |
-| `package.json` | Update `"name"` field (lowercase, kebab — keep `micro-habits` to avoid breaking deploy slug, OR rename to `becoming`. **Decision: keep `micro-habits` to avoid Vercel project re-link**.) |
-| `README.md` | Update headline to "Becoming — daily practice for affirmations and habits". |
+| `src/types.ts` | `MicroHabit` 加 `category`。`Task` 删 `type` 和 `priority`，`habitId` 改为必填。 |
+| `src/firebase.ts` | （本 spec 不动。） |
+| `src/useStore.ts` | (1) 加懒迁移 effect：补 `category='habit'`，删除所有 `type==='one-time'` 的 task。(2) 移除 streak / Hall of Fame trigger 里的 `t.type === 'habit'` 过滤。(3) 移除 `addOneTimeTask` 等所有 one-time 相关的 store 函数。(4) `addMicroHabit` 签名加 `category` 参数。 |
+| `src/App.tsx` | (1) 把 `Micro Habits` 替换为 `Becoming`（登录页 header + 主 header）。(2) 登录页 subtitle 替换为 James Clear tagline。(3) `HabitsView` import 改名为 `PracticeView`。(4) 底部 nav 标签 `Habits` → `Practice`。 |
+| `src/components/HabitsView.tsx` → `src/components/PracticeView.tsx` | 重命名文件。重构成两个分组 section（Affirmations、Habits），各有独立 `+ Add` 按钮。intro 文案换成 James Clear tagline。加肯定语空态文案。 |
+| `src/components/TodayView.tsx` | (1) 删除所有 one-time UI（编辑 input、priority chip）。(2) 按 `microHabits.find(h => h.id === t.habitId)?.category` 把 task 分到两个 section。(3) 肯定语加 italic + 引号样式。(4) 空 section 隐藏标题。 |
+| `src/components/HistoryView.tsx` | (1) 删除 `t.type === 'habit'` 过滤（约 line 189）。(2) 加 filter toggle UI (All / Habits / Affirmations)。(3) filter 应用到日历点、Best Streak、Active Practices、Weekly Progress。(4) 「Active Habits」统计标签改为「Active Practices」。(5) Hall of Fame：肯定语 entry 用 italic + 引号渲染。 |
+| `src/components/SwipeActions.tsx` | （不动。） |
+| `tests/useStore.test.ts` | mock data 去掉 `type`，加 `category`。加测试：legacy habit 没 `category` 时迁移补字段。加测试：one-time 删除路径。更新 Hall of Fame 测试断言肯定语 21 天也触发 entry。 |
+| `firestore.rules` | 可选：在 `isValidMicroHabit()` 加 `category` 字段验证。可推到实现阶段再决定。 |
+| `index.html` | `<title>` 从 `MicroHabits` 改为 `Becoming`。 |
+| `vite.config.ts` (PWA manifest) | manifest 的 `name` 和 `short_name` 从 `MicroHabits` 改为 `Becoming`。 |
+| `public/manifest.webmanifest` | （由 vite-plugin-pwa 从配置生成；不手动改。） |
+| `package.json` | `"name"` 字段（小写、kebab-case——保留 `micro-habits` 避免影响 deploy slug，**或**改名为 `becoming`。**决定：保留 `micro-habits` 避免 Vercel 项目重新链接**。） |
+| `README.md` | 头部介绍改为「Becoming —— 肯定语和习惯的每日实践」。 |
 
-### Files NOT changed
-- Firestore collection paths (`microHabits` / `tasks` / `habitPool`) — kept as-is.
-- Cloud Function `dailyTaskReminder` and `functions/` — independent module.
-- `firebase-applet-config.json` — no schema change needed.
-- Push notification subsystem (`messaging.ts`, `firebase-messaging-sw.js`, etc.).
-
----
-
-## 8. Migration Strategy
-
-### Order of operations on next user load
-
-1. App boots, `useStore.ts` mounts.
-2. After Firestore data subscription loads, run migration effect once per session:
-   - For each `microHabit` without `category`: write `{ category: 'habit' }` with `merge: true`.
-   - For each `task` with `type === 'one-time'`: delete document.
-   - Log: `[migration] backfilled N microHabits, deleted M one-time tasks`.
-3. Migration is idempotent — safe to run multiple times.
-4. After migration, all read paths still use `habit.category ?? 'habit'` defensively for the next 30 days, then can be cleaned up in a follow-up commit.
-
-### Rollback plan
-
-- Code: standard `git revert` on the implementation commit.
-- Data: Firestore PITR (Point-in-Time Recovery) covers 7 days. If one-time deletion is regretted, restore from PITR via `gcloud firestore import`.
-- Hall of Fame: no destructive changes — existing entries preserved across the refactor.
+### 不动的文件
+- Firestore 集合路径 (`microHabits` / `tasks` / `habitPool`) —— 维持原状。
+- Cloud Function `dailyTaskReminder` 和 `functions/` —— 独立模块。
+- `firebase-applet-config.json` —— 无 schema 变更需求。
+- 推送通知子系统 (`messaging.ts`、`firebase-messaging-sw.js` 等)。
 
 ---
 
-## 9. Testing
+## 8. 迁移策略
 
-### Unit (vitest, `tests/useStore.test.ts`)
+### 用户下次加载时的执行顺序
 
-- ✅ Daily reset still creates one task per active microHabit (existing).
-- 🆕 Legacy `microHabit` without `category` → migration writes `category: 'habit'`.
-- 🆕 Daily reset includes both `category: 'habit'` and `category: 'affirmation'` microHabits.
-- 🆕 Hall of Fame triggers when an affirmation hits 21 consecutive days.
-- 🆕 One-time task deletion runs once and is idempotent.
-- ❌ Remove tests asserting `Task.type === 'one-time'` behavior.
-- 🎯 Coverage target: ≥ 80% on `useStore.ts` (per CLAUDE.md global rule).
+1. App 启动，`useStore.ts` 挂载。
+2. Firestore 数据订阅就绪后，每个 session 跑一次 migration effect：
+   - 每条不带 `category` 的 `microHabit`：写 `{ category: 'habit' }` (`merge: true`)。
+   - 每条 `type === 'one-time'` 的 `task`：删除文档。
+   - 日志：`[migration] backfilled N microHabits, deleted M one-time tasks`。
+3. Migration 是幂等的——重复跑无副作用。
+4. Migration 后，所有读取路径在接下来 30 天内继续用 `habit.category ?? 'habit'` 做 defensive fallback，之后可在 follow-up commit 里清理。
 
-### E2E (Playwright, `tests/e2e/`)
+### 回滚方案
 
-- 🆕 New flow: create an affirmation in Practice, verify it appears in Today's Affirmations section, complete it, verify line-through + lighter color.
-- 🆕 New flow: switch History filter All → Habits → Affirmations, verify calendar / streak / weekly all update.
-- ✅ Existing habit creation / completion flows still pass.
-- 🆕 Verify login page shows `Becoming` and James Clear tagline.
-
-### Visual regression
-
-- Take baseline screenshots of Today / Practice / History on mobile viewport (375x812) — re-take after implementation, eyeball compare.
-
-### Manual smoke test before claiming done (CLAUDE.md global)
-
-- Run `npm run dev`, login with real Google account, complete one full ritual (read affirmations → check off → do habits → check off), verify Today, Practice, History, Hall of Fame all coherent.
+- 代码：标准 `git revert` 在实现 commit 上。
+- 数据：Firestore PITR 覆盖 7 天。如果后悔删了 one-time，从 PITR 用 `gcloud firestore import` 恢复。
+- Hall of Fame：无破坏性变更——现有 entry 在 refactor 中保留。
 
 ---
 
-## 10. Open Risks
+## 9. 测试
 
-| Risk | Likelihood | Impact | Mitigation |
+### 单元测试 (vitest, `tests/useStore.test.ts`)
+
+- ✅ Daily reset 仍然为每条 active microHabit 创建一个 task（沿用）。
+- 🆕 Legacy `microHabit` 没 `category` → migration 写 `category: 'habit'`。
+- 🆕 Daily reset 同时包括 `category: 'habit'` 和 `category: 'affirmation'` 的 microHabit。
+- 🆕 Hall of Fame 在肯定语连续 21 天时触发。
+- 🆕 One-time task 删除运行一次且幂等。
+- ❌ 移除断言 `Task.type === 'one-time'` 行为的测试。
+- 🎯 覆盖率目标：`useStore.ts` ≥ 80%（按 CLAUDE.md 全局规则）。
+
+### E2E 测试 (Playwright, `tests/e2e/`)
+
+- 🆕 新流程：在 Practice 创建一条肯定语，验证它出现在 Today 的 Affirmations section，完成它，验证 line-through + 颜色变浅。
+- 🆕 新流程：切换 History filter All → Habits → Affirmations，验证日历 / streak / weekly 全部更新。
+- ✅ 现有习惯创建 / 完成流程仍然通过。
+- 🆕 验证登录页显示 `Becoming` 和 James Clear tagline。
+
+### 视觉回归
+
+- 在 mobile viewport (375x812) 拍 Today / Practice / History 三页基线截图——实现后再拍一组对比。
+
+### 声明完成前的手动冒烟测试 (CLAUDE.md 全局规则)
+
+- 跑 `npm run dev`，用真实 Google 账号登录，完整走一次仪式（读肯定语 → 打卡 → 做习惯 → 打卡），确认 Today、Practice、History、Hall of Fame 都连贯。
+
+---
+
+## 10. 开放风险
+
+| 风险 | 概率 | 影响 | 缓解 |
 |---|---|---|---|
-| Lazy migration fails partway (network drop, Firestore quota) | Low | Medium | Idempotent migration; runs again next session. Logged. |
-| User had data in one-time tasks they actually wanted | Low | High (perceived) | PITR rollback within 7 days. User explicitly approved hard delete. |
-| Vercel deploy slug `micro-habits-zeta.vercel.app` becomes confusing under new brand | Low | Low | Decide later — either keep slug for backward compat or add a `becoming.app` custom domain in a follow-up. |
-| Affirmation streak feels different mentally — user adds 30 affirmations, every day "perfect" becomes impossible | Medium | Medium | UX nudge in v2: small caption near `+ Add Affirmation` like "Keep it few. The point is to mean it." Deferred. |
-| iOS Safari PWA users still on old SW (we just shipped 5 layers of fix yesterday) | Resolved | — | Already addressed in `c08d49f`. |
+| 懒迁移半路失败（断网、Firestore quota）| 低 | 中 | Migration 幂等；下次进入再跑。带日志。 |
+| 用户其实有想保留的 one-time task 数据 | 低 | 高（感知层）| PITR 7 天回滚。用户已明确批准硬删除。 |
+| Vercel 部署 slug `micro-habits-zeta.vercel.app` 在新品牌下显得违和 | 低 | 低 | 后续再决定——要么保留 slug 兼容老用户，要么 follow-up 加 `becoming.app` 自定义域名。 |
+| 肯定语 streak 心智不同——用户加 30 条，每天「完美」就不可能 | 中 | 中 | v2 加 UX 提示：`+ Add Affirmation` 旁加 caption「Keep it few. The point is to mean it.」。延后做。 |
+| iOS Safari PWA 用户还在用旧 SW（昨天才发了 5 层修复）| 已解决 | —— | `c08d49f` 已处理。 |
 
 ---
 
-## 11. Decisions Trail (for posterity)
+## 11. 决策回顾（备忘）
 
-User-confirmed choices during brainstorm session:
+Brainstorm 会话期间用户确认的选择：
 
-| Decision | Choice | Rationale |
+| 决定项 | 选择 | 理由 |
 |---|---|---|
-| Affirmation打卡 semantics | Daily reset (option A) | Same mechanic as habits |
-| Streak / heatmap | Merged (option A) | Simplicity, "today is one whole day" |
-| IA | Two sections in same page (option B), Practice tab | No tab proliferation |
-| Section order | Affirmations above Habits | Morning ritual: read first, then act |
-| Tab name | Habits → Practice (B1) | Matches dual-content surface |
-| App name | Micro Habits → **Becoming** | Identity-anchored, James Clear lineage |
-| Tagline | James Clear: *"Every action you take is a vote..."* | Direct attribution, modern psychology |
-| Visual style | Italic + `"..."` for affirmations | Literary contrast vs serif habits |
-| Hall of Fame split | One unified Hall | Consistent with merged streak |
-| Active stat label | "Active Practices" | Generalizes both content types |
-| One-time task | Hard delete | Near-zero usage, dead weight |
-| Filter persistence | Not persisted | Avoid stale-streak confusion |
+| 肯定语打卡语义 | 每天 reset (选项 A) | 跟习惯同机制 |
+| Streak / 热力图 | 合并算 (选项 A) | 简洁，「今天就是一整天」 |
+| 信息架构 | 同页两 section (选项 B)，Practice tab | 不增加 tab 数 |
+| Section 顺序 | Affirmations 在 Habits 上 | 早晨仪式：先念后做 |
+| Tab 名 | Habits → Practice (B1) | 匹配双内容承载面 |
+| App 名 | Micro Habits → **Becoming** | 身份锚点，James Clear 脉络 |
+| Tagline | James Clear: *"Every action you take is a vote..."* | 直接溯源，现代心理学 |
+| 视觉风格 | 肯定语 italic + `"..."` 引号 | 跟习惯 serif 形成文学对比 |
+| Hall of Fame 拆分 | 一个统一 Hall | 跟合并 streak 心智一致 |
+| Active 统计标签 | "Active Practices" | 同时涵盖两类 |
+| One-time task | 硬删除 | 几乎无用，死代码 |
+| Filter 持久化 | 不持久化 | 避免「streak 看着断了」的困惑 |
 
 ---
 
-## 12. Next Steps
+## 12. 下一步
 
-1. ✅ This spec written and committed.
-2. 🟡 User reviews spec (this gate is required).
-3. ⏳ Invoke `superpowers:writing-plans` skill to produce a detailed implementation plan (file-by-file, test-first per TDD rule).
-4. ⏳ Implementation in a feature branch, PR review, merge.
-5. ⏳ Manual smoke test + visual regression.
-6. ⏳ `vercel --prod` deploy.
+1. ✅ Spec 写完并 commit。
+2. 🟡 用户 review spec（必须的 gate）。
+3. ⏳ 调用 `superpowers:writing-plans` skill 产出详细实施计划（精确到文件，按 TDD 规则 test-first）。
+4. ⏳ 在 feature branch 实施，PR review，merge。
+5. ⏳ 手动冒烟测试 + 视觉回归。
+6. ⏳ `vercel --prod` 部署。

@@ -13,9 +13,9 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'MicroHabits',
-          short_name: 'MicroHabits',
-          description: 'Build better habits, one day at a time.',
+          name: 'Becoming',
+          short_name: 'Becoming',
+          description: 'Every action you take is a vote for who you wish to become.',
           theme_color: '#F9F8F6',
           background_color: '#F9F8F6',
           display: 'standalone',

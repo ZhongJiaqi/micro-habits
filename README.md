@@ -1,16 +1,19 @@
-# MicroHabits
+# Becoming
 
-Build better habits, one day at a time.
+> *Every action you take is a vote for the type of person you wish to become.*
+> — James Clear
 
-A habit tracking PWA that helps users build habits through small, daily actions with positive reinforcement.
+肯定语和习惯的每日实践。每个行动，都是投给你想成为之人的一票。
+
+A daily-practice PWA that pairs **affirmations** (what you tell yourself) with **habits** (what you do), built on the behavior-science chain *thought → action → destiny*.
 
 ## Features
 
-- **Habit Management** - Create, edit, delete daily micro-habits
-- **Daily Tasks** - Habits automatically generate today's tasks; supports one-time tasks with priority
-- **21-Day Streak** - Habits reaching 21 consecutive days enter the Hall of Fame
-- **Analytics** - Calendar heatmap, streak counter, weekly completion chart
-- **PWA** - Installable on mobile, works like a native app (no app store needed)
+- **Practice** - Manage two kinds of daily practice: affirmations (italic, quoted) and habits (serif, upright)
+- **Today** - One ritual flow per day: read your affirmations, then check off your habits
+- **21-Day Hall of Fame** - Practices reaching 21 consecutive days enter the Hall — affirmations and habits alike
+- **History** - Calendar heatmap, streak counter, weekly chart, with All / Habits / Affirmations filter
+- **PWA** - Installable on mobile, works offline-first
 - **Swipe Actions** - Left-swipe to edit/delete on mobile
 
 ## Tech Stack

@@ -4,6 +4,16 @@ import { MicroHabit, Task, HabitPoolItem } from './types';
 import { db, auth } from './firebase';
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query } from 'firebase/firestore';
 
+export async function migrateMicroHabitCategory(
+  habit: MicroHabit,
+  userId: string,
+  setDocFn: typeof setDoc = setDoc,
+): Promise<void> {
+  if (habit.category) return; // already migrated, skip
+  const path = `users/${userId}/microHabits/${habit.id}`;
+  await setDocFn(doc(db, path), { category: 'habit' }, { merge: true });
+}
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -95,6 +105,12 @@ export function useStore(userId?: string) {
 
     const unsubMicroHabits = onSnapshot(query(microHabitsRef), (snapshot) => {
       const microHabits = snapshot.docs.map(doc => doc.data() as MicroHabit);
+      // Lazy migration: backfill category for legacy entries
+      microHabits.forEach(h => {
+        migrateMicroHabitCategory(h, userId).catch(() => {
+          /* migration failure non-fatal, will retry next session */
+        });
+      });
       setData(prev => ({ ...prev, microHabits }));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, microHabitsPath);

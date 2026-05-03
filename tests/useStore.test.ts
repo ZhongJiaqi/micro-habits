@@ -13,8 +13,9 @@
  * 4. ensureHabitTask uses deterministic IDs (habitId_date) + setDoc,
  *    so even if called redundantly, Firestore ends up with 1 document.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { format } from 'date-fns';
+import { migrateMicroHabitCategory } from '../src/useStore';
 
 // --- Extracted logic from useStore for testability ---
 
@@ -345,5 +346,60 @@ describe('HabitsView — Add Habit Form', () => {
     addHabit();
 
     expect(callCount).toBe(1);
+  });
+});
+
+describe('Migration: backfill category for legacy MicroHabit', () => {
+  it('writes category="habit" when habit lacks category field', async () => {
+    const setDocMock = vi.fn().mockResolvedValue(undefined);
+    const legacyHabit = {
+      id: 'h1',
+      title: '散步',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      active: true,
+      userId: 'u1',
+      // NO category field — simulating legacy data
+    } as any;
+
+    await migrateMicroHabitCategory(legacyHabit, 'u1', setDocMock);
+
+    expect(setDocMock).toHaveBeenCalledTimes(1);
+    expect(setDocMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { category: 'habit' },
+      { merge: true }
+    );
+  });
+
+  it('skips habit that already has category', async () => {
+    const setDocMock = vi.fn().mockResolvedValue(undefined);
+    const modernHabit = {
+      id: 'h2',
+      title: 'meditation',
+      createdAt: '2026-05-03T00:00:00.000Z',
+      active: true,
+      userId: 'u1',
+      category: 'habit',
+    };
+
+    await migrateMicroHabitCategory(modernHabit as any, 'u1', setDocMock);
+
+    expect(setDocMock).not.toHaveBeenCalled();
+  });
+
+  it('handles affirmation category correctly (does not overwrite)', async () => {
+    const setDocMock = vi.fn().mockResolvedValue(undefined);
+    const affirmationHabit = {
+      id: 'h3',
+      title: 'I am enough.',
+      createdAt: '2026-05-03T00:00:00.000Z',
+      active: true,
+      userId: 'u1',
+      category: 'affirmation',
+    };
+
+    await migrateMicroHabitCategory(affirmationHabit as any, 'u1', setDocMock);
+
+    expect(setDocMock).not.toHaveBeenCalled();
   });
 });

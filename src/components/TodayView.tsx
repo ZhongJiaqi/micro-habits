@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { format } from 'date-fns';
-import { motion, AnimatePresence } from 'motion/react';
-import { Task, MicroHabit } from '../types';
+import type { ReactNode } from "react";
+import { format } from "date-fns";
+import { motion, AnimatePresence } from "motion/react";
+import { Task, MicroHabit } from "../types";
 
 interface TodayViewProps {
   store: any;
@@ -22,43 +22,47 @@ interface TaskRowProps {
 }
 
 function TaskRow({ task, isAffirmation, onToggle }: TaskRowProps) {
+  const completedClass = task.completed
+    ? "text-[#B0ADA5] line-through decoration-[#C4C1B9]"
+    : "text-[#2C2C2C]";
+
   return (
     <div className="flex items-center gap-4 py-3 border-b border-[#EAE8E3]">
       <button
         onClick={onToggle}
         className={`w-4 h-4 rounded-full border-[1.5px] transition-all ${
-          task.completed
-            ? 'bg-[#8A9A86] border-[#8A9A86]'
-            : 'border-[#C4C1B9]'
+          task.completed ? "bg-[#8A9A86] border-[#8A9A86]" : "border-[#C4C1B9]"
         }`}
-        aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+        aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
       />
       <span
-        className={`flex-1 text-[15px] font-serif transition-colors ${
-          task.completed ? 'text-[#B0ADA5] line-through decoration-[#C4C1B9]' : 'text-[#2C2C2C]'
-        } ${isAffirmation ? 'italic before:content-[\'\\201C\'] after:content-[\'\\201D\'] before:text-[#A09E9A] after:text-[#A09E9A]' : ''}`}
+        className={`flex-1 text-[15px] font-serif transition-colors ${completedClass} ${
+          isAffirmation ? "italic" : ""
+        }`}
       >
+        {isAffirmation && <span className="text-[#A09E9A]">&ldquo;</span>}
         {task.title}
+        {isAffirmation && <span className="text-[#A09E9A]">&rdquo;</span>}
       </span>
     </div>
   );
 }
 
 export default function TodayView({ store }: TodayViewProps) {
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(new Date(), "yyyy-MM-dd");
   const tasksToday = store.data.tasks.filter((t: Task) => t.date === today);
 
   // build category map from microHabits
-  const habitCategoryMap = new Map<string, 'habit' | 'affirmation'>();
+  const habitCategoryMap = new Map<string, "habit" | "affirmation">();
   store.data.microHabits.forEach((h: MicroHabit) => {
-    habitCategoryMap.set(h.id, h.category ?? 'habit');
+    habitCategoryMap.set(h.id, h.category ?? "habit");
   });
 
-  const affirmations = tasksToday.filter((t: Task) =>
-    habitCategoryMap.get(t.habitId) === 'affirmation'
+  const affirmations = tasksToday.filter(
+    (t: Task) => habitCategoryMap.get(t.habitId) === "affirmation",
   );
-  const habits = tasksToday.filter((t: Task) =>
-    habitCategoryMap.get(t.habitId) !== 'affirmation' // default to habit if missing
+  const habits = tasksToday.filter(
+    (t: Task) => habitCategoryMap.get(t.habitId) !== "affirmation", // default to habit if missing
   );
 
   return (

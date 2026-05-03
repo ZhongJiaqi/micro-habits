@@ -1,5 +1,5 @@
 /**
- * E2E tests for MicroHabits app.
+ * E2E tests for Becoming app.
  * Runs against local preview server (production build).
  */
 import { test, expect } from '@playwright/test';
@@ -7,19 +7,22 @@ import { test, expect } from '@playwright/test';
 const BASE_URL = 'http://localhost:4173';
 
 test.describe('Login Page', () => {
-  test('shows app title and login button', async ({ page }) => {
+  test('shows Becoming brand and login button', async ({ page }) => {
     await page.goto(BASE_URL);
     // Wait for React to render (Firebase SDK keeps connections open, so networkidle won't work)
     await page.waitForSelector('h1', { timeout: 15000 });
 
-    await expect(page.locator('h1')).toContainText('Micro Habits');
+    await expect(page.locator('h1')).toContainText('Becoming');
     await expect(page.locator('button')).toContainText('Continue with Google');
   });
 
-  test('shows tagline', async ({ page }) => {
+  test('shows James Clear tagline and attribution', async ({ page }) => {
     await page.goto(BASE_URL);
     await page.waitForSelector('h1', { timeout: 15000 });
-    await expect(page.locator('text=Build better habits, one day at a time.')).toBeVisible();
+    await expect(
+      page.locator('p').filter({ hasText: 'Every action you take is a vote' })
+    ).toBeVisible();
+    await expect(page.locator('p').filter({ hasText: 'James Clear' })).toBeVisible();
   });
 });
 
@@ -29,8 +32,8 @@ test.describe('PWA', () => {
     expect(response?.status()).toBe(200);
 
     const manifest = await response?.json();
-    expect(manifest.name).toBe('MicroHabits');
-    expect(manifest.short_name).toBe('MicroHabits');
+    expect(manifest.name).toBe('Becoming');
+    expect(manifest.short_name).toBe('Becoming');
     expect(manifest.display).toBe('standalone');
     expect(manifest.theme_color).toBe('#F9F8F6');
     expect(manifest.icons).toHaveLength(2);
@@ -49,9 +52,9 @@ test.describe('PWA', () => {
     expect(appleTouchIcon?.status()).toBe(200);
   });
 
-  test('page title is MicroHabits', async ({ page }) => {
+  test('page title is Becoming', async ({ page }) => {
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-    await expect(page).toHaveTitle('MicroHabits');
+    await expect(page).toHaveTitle('Becoming');
   });
 
   test('has correct meta tags in HTML', async ({ page }) => {
@@ -61,7 +64,7 @@ test.describe('PWA', () => {
     expect(themeColor).toBe('#F9F8F6');
 
     const description = await page.locator('meta[name="description"]').getAttribute('content');
-    expect(description).toBe('Build better habits, one day at a time.');
+    expect(description).toContain('vote for who you wish to become');
 
     const appleCapable = await page.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content');
     expect(appleCapable).toBe('yes');
@@ -74,7 +77,7 @@ test.describe('Responsive', () => {
     await page.goto(BASE_URL);
     await page.waitForSelector('h1', { timeout: 15000 });
 
-    await expect(page.locator('h1')).toContainText('Micro Habits');
+    await expect(page.locator('h1')).toContainText('Becoming');
     await expect(page.locator('button')).toContainText('Continue with Google');
   });
 });

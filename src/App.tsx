@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, List, Clock } from 'lucide-react';
 import TodayView from './components/TodayView';
-import HabitsView from './components/HabitsView';
+import PracticeView from './components/PracticeView';
 import HistoryView from './components/HistoryView';
 import NotificationPrompt from './components/NotificationPrompt';
 import { useStore } from './useStore';
@@ -13,7 +13,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, User, AuthError } from 'firebase/auth';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'today' | 'habits' | 'history'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'practice' | 'history'>('today');
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -139,16 +139,16 @@ export default function App() {
                 <TodayView store={store} />
               </motion.div>
             )}
-            {activeTab === 'habits' && (
+            {activeTab === 'practice' && (
               <motion.div
-                key="habits"
+                key="practice"
                 initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 className="h-full"
               >
-                <HabitsView store={store} />
+                <PracticeView store={store} />
               </motion.div>
             )}
             {activeTab === 'history' && (
@@ -176,11 +176,11 @@ export default function App() {
             <span className={`text-[9px] mt-1.5 tracking-widest transition-all duration-500 ${activeTab === 'today' ? 'opacity-100 font-medium' : 'opacity-0 h-0 overflow-hidden'}`}>TODAY</span>
           </button>
           <button
-            onClick={() => setActiveTab('habits')}
-            className={`flex flex-col items-center p-2 transition-all duration-500 ${activeTab === 'habits' ? 'text-[#1A1A1A]' : 'text-[#A09E9A] hover:text-[#5C5A56]'}`}
+            onClick={() => setActiveTab('practice')}
+            className={`flex flex-col items-center p-2 transition-all duration-500 ${activeTab === 'practice' ? 'text-[#1A1A1A]' : 'text-[#A09E9A] hover:text-[#5C5A56]'}`}
           >
             <List className="w-5 h-5 stroke-[1.5]" />
-            <span className={`text-[9px] mt-1.5 tracking-widest transition-all duration-500 ${activeTab === 'habits' ? 'opacity-100 font-medium' : 'opacity-0 h-0 overflow-hidden'}`}>HABITS</span>
+            <span className={`text-[9px] mt-1.5 tracking-widest transition-all duration-500 ${activeTab === 'practice' ? 'opacity-100 font-medium' : 'opacity-0 h-0 overflow-hidden'}`}>PRACTICE</span>
           </button>
           <button
             onClick={() => setActiveTab('history')}

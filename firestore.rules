@@ -17,15 +17,15 @@ service cloud.firestore {
     //
     // Collection: users/{userId}/tasks
     // Document ID: {taskId}
-    // Fields:
+    // Fields (Becoming refactor):
     //   - id: string (required)
     //   - title: string (required, < 100 chars)
     //   - date: string (required)
     //   - completed: boolean (required)
-    //   - type: string (required, 'habit' or 'one-time')
-    //   - habitId: string (optional)
-    //   - priority: string (optional, 'low', 'medium', 'high')
+    //   - habitId: string (required, all tasks derive from a microHabit)
     //   - userId: string (required, immutable)
+    //   - type: deprecated (legacy data may still have it, validation tolerant)
+    //   - priority: deprecated (legacy one-time data, validation tolerant)
     //
     // Collection: users/{userId}/habitPool
     // Document ID: {poolId}
@@ -82,15 +82,15 @@ service cloud.firestore {
     }
 
     function isValidTask() {
-      return hasRequiredFields(['id', 'title', 'date', 'completed', 'type', 'userId']) &&
+      // Becoming refactor: Task 删除 type 和 priority 字段，habitId 改为必填
+      // 旧 task 文档可能仍带 type/priority — 不强制 absent，但新 task 不需要这些字段
+      return hasRequiredFields(['id', 'title', 'date', 'completed', 'habitId', 'userId']) &&
              validStringLength('id', 1, 50) &&
              validStringLength('title', 1, 100) &&
              request.resource.data.date is string &&
              request.resource.data.completed is bool &&
-             request.resource.data.type in ['habit', 'one-time'] &&
-             request.resource.data.userId == request.auth.uid &&
-             (!('habitId' in request.resource.data) || request.resource.data.habitId is string) &&
-             (!('priority' in request.resource.data) || request.resource.data.priority in ['low', 'medium', 'high']);
+             request.resource.data.habitId is string &&
+             request.resource.data.userId == request.auth.uid;
     }
 
     function isValidHabitPoolItem() {

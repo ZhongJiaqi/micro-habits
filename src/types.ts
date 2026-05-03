@@ -1,9 +1,12 @@
+export type MicroHabitCategory = 'habit' | 'affirmation';
+
 export interface MicroHabit {
   id: string;
   title: string;
   createdAt: string; // ISO string
   active: boolean;
   userId: string;
+  category: MicroHabitCategory;
 }
 
 export interface Task {
@@ -11,9 +14,7 @@ export interface Task {
   title: string;
   date: string; // YYYY-MM-DD
   completed: boolean;
-  type: 'habit' | 'one-time';
-  habitId?: string; // Reference to MicroHabit if type is 'habit'
-  priority?: 'low' | 'medium' | 'high';
+  habitId: string; // 现在必填，所有 task 都来自 habit
   userId: string;
 }
 

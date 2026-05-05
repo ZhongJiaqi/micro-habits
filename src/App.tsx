@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, List, Clock } from 'lucide-react';
 import TodayView from './components/TodayView';
 import PracticeView from './components/PracticeView';
-import HistoryView from './components/HistoryView';
+// HistoryView is heaviest tab (date-fns date math + calendar grid + Hall of Fame).
+// Lazy-load so Today/Practice tabs don't pay the cost up-front.
+const HistoryView = lazy(() => import('./components/HistoryView'));
 import NotificationPrompt from './components/NotificationPrompt';
 import { useStore } from './useStore';
 import { useDemoStore, isDemoMode } from './useDemoStore';
@@ -160,7 +162,9 @@ export default function App() {
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 className="h-full"
               >
-                <HistoryView store={store} />
+                <Suspense fallback={null}>
+                  <HistoryView store={store} />
+                </Suspense>
               </motion.div>
             )}
           </AnimatePresence>

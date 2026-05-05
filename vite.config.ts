@@ -65,6 +65,10 @@ export default defineConfig(({mode}) => {
             if (id.includes('/node_modules/lucide-react/')) {
               return 'vendor-lucide';
             }
+            // canvas-confetti — only loaded with TodayView, modest size but worth isolating
+            if (id.includes('/node_modules/canvas-confetti/')) {
+              return 'vendor-confetti';
+            }
           },
         },
       },

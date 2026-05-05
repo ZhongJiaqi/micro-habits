@@ -16,10 +16,50 @@ import { signInWithGoogle, consumeRedirectResult } from './lib/auth';
 import { collection, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, User, AuthError } from 'firebase/auth';
 
+/**
+ * 主区域加载占位：登录后 Firestore 数据还没回来时显示。
+ * 复刻 TodayView 的视觉骨架（区段标签 + 任务行）但不暴露任何真实/空态文案，
+ * 避免出现"No practices yet…"误导。
+ */
+function TodaySkeleton() {
+  return (
+    <div className="pt-2 animate-pulse" aria-busy="true" aria-label="Loading">
+      <div className="h-3 w-24 bg-[#E8E5DE] rounded mt-6 mb-4" />
+      <div className="space-y-2">
+        <div className="h-14 bg-[#EDEAE3] rounded-xl" />
+        <div className="h-14 bg-[#EDEAE3] rounded-xl" />
+      </div>
+      <div className="h-3 w-20 bg-[#E8E5DE] rounded mt-8 mb-4" />
+      <div className="space-y-2">
+        <div className="h-14 bg-[#EDEAE3] rounded-xl" />
+        <div className="h-14 bg-[#EDEAE3] rounded-xl" />
+        <div className="h-14 bg-[#EDEAE3] rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+// localStorage 标记"过去登录成功过"。
+// 用于在启动瞬间（onAuthStateChanged 还没回调）乐观渲染主框架，
+// 避免老用户每次打开都看到全屏 splash。
+// session 真过期时（极少数）会有"主框架闪一下→LoginPage"的反向闪烁，
+// 但 99% 场景下零等待，明显比"全员都看 splash"好。
+const HAD_SESSION_KEY = 'becoming.hadSession';
+
+function readHadSession(): boolean {
+  try {
+    return localStorage.getItem(HAD_SESSION_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'today' | 'practice' | 'history'>('today');
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  // 初始值同步从 localStorage 读取，确保首次 render 就能决定要不要跳过 splash。
+  const [hadSession, setHadSession] = useState<boolean>(readHadSession);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginPending, setLoginPending] = useState(false);
   const demoMode = isDemoMode();
@@ -39,7 +79,15 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthReady(true);
-      if (currentUser) setLoginError(null);
+      if (currentUser) {
+        setLoginError(null);
+        try { localStorage.setItem(HAD_SESSION_KEY, 'true'); } catch { /* private mode */ }
+        setHadSession(true);
+      } else {
+        // session 真不存在了，清掉乐观标记，下次启动直接显示 LoginPage
+        try { localStorage.removeItem(HAD_SESSION_KEY); } catch { /* private mode */ }
+        setHadSession(false);
+      }
     });
     return () => {
       cancelled = true;
@@ -79,7 +127,9 @@ export default function App() {
     }
   };
 
-  if (!authReady && !demoMode) {
+  // Splash 只对"首次访问 / 没登录过"的新用户显示。
+  // 老用户（hadSession=true）跳过 splash，直接走到下方乐观主框架渲染。
+  if (!authReady && !demoMode && !hadSession) {
     // Branded splash — matches the inline #root-splash in index.html so
     // the transition from server-rendered HTML to React-rendered UI is seamless.
     return (
@@ -97,7 +147,10 @@ export default function App() {
     );
   }
 
-  if (!user && !demoMode) {
+  // LoginPage 必须在 authReady 之后才显示。
+  // 老用户启动时 authReady=false 但 hadSession=true，乐观渲染主框架；
+  // 此时 user=null 不能进 LoginPage 分支，否则会出现"主框架→LoginPage→主框架"的闪烁。
+  if (authReady && !user && !demoMode) {
     return (
       <LoginPage
         onLogin={handleLogin}
@@ -107,25 +160,10 @@ export default function App() {
     );
   }
 
-  // User is signed in but Firestore data hasn't arrived yet — keep showing
-  // the branded splash so views don't briefly render their empty-state copy
-  // ("No practices yet…") before real data lands.
-  if (user && !store.data.loaded) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: '#F5F2EC' }}
-      >
-        <h1
-          className="font-serif font-medium text-[#1A1A1A] leading-none animate-pulse"
-          style={{ fontSize: 'clamp(52px, 14vw, 76px)', letterSpacing: '0.01em' }}
-        >
-          Becoming
-        </h1>
-      </div>
-    );
-  }
-
+  // 登录后已知用户身份但 Firestore 数据还在路上：直接渲染主框架（header + nav），
+  // <main> 区域用 skeleton 占位代替全屏 splash，给用户立刻的"我登上了"反馈。
+  // 关键：在主区域不能渲染 TodayView/PracticeView，否则它们的空态文案
+  // ("No practices yet…") 会先闪现再被真实数据替换。
   return (
     <div className="min-h-screen bg-[#F9F8F6] text-[#2C2C2C] font-sans flex flex-col items-center selection:bg-[#E2DFD8]">
       <div className="w-full max-w-md bg-[#F9F8F6] min-h-screen flex flex-col relative overflow-hidden shadow-2xl shadow-black/5">
@@ -161,6 +199,9 @@ export default function App() {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-28 relative px-8">
+          {user && !store.data.loaded ? (
+            <TodaySkeleton />
+          ) : (
           <AnimatePresence mode="wait">
             {activeTab === 'today' && (
               <motion.div
@@ -201,6 +242,7 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+          )}
         </main>
 
         {/* Bottom Navigation */}

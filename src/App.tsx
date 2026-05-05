@@ -49,35 +49,17 @@ export default function App() {
   }, []);
 
   // Grace period before committing to LoginPage when auth says user=null.
-  //
   // Firebase's initial onAuthStateChanged callback can fire user=null even
-  // when a session exists — especially on iOS PWA where token re-verification
-  // can take 3-5s — and then fire the real user shortly after. Without a
+  // when a session exists — especially on iOS PWA where IndexedDB persistence
+  // is flaky — and then fire the real user ~0.5-1.5s later. Without this
   // grace period the LoginPage flashes before the splash → real-data flow.
-  //
-  // Strategy: differentiate first-time visitors from returning sessions.
-  //   • Returning (hadSession in localStorage): wait up to 8s for the real
-  //     user to materialize. If timeout still null, treat as expired and
-  //     show LoginPage (clearing the flag).
-  //   • First-time: show LoginPage immediately, no wasted wait.
   useEffect(() => {
     if (demoMode || user) {
       setShowLoginPage(false);
-      if (user) {
-        try { localStorage.setItem('becoming:had-session', '1'); } catch { /* ignore */ }
-      }
       return;
     }
     if (!authReady) return;
-    let hadSession = false;
-    try { hadSession = localStorage.getItem('becoming:had-session') === '1'; } catch { /* ignore */ }
-    const graceMs = hadSession ? 8000 : 0;
-    const timer = setTimeout(() => {
-      setShowLoginPage(true);
-      if (hadSession) {
-        try { localStorage.removeItem('becoming:had-session'); } catch { /* ignore */ }
-      }
-    }, graceMs);
+    const timer = setTimeout(() => setShowLoginPage(true), 1500);
     return () => clearTimeout(timer);
   }, [user, authReady, demoMode]);
 

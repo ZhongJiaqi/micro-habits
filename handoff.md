@@ -152,8 +152,9 @@ export interface HabitPoolItem {  // Hall of Fame
 | **H** | Hall 改累计 21 次 view-computed（不再依赖 habitPool firestore 写入触发，老用户成就自动补回，按 count 倒序，显示 Achieved 第 21 次完成日期） | `83ec243` |
 | **I** | Today 加 quiet streak 提醒（未完成 task 连续 3+ 天没完成时显示 `{N} days quiet`） | `5e3d665` |
 | **J** | useDemoStore 扩展 30 天历史 task，演示 Hall + quiet streak 两个特性 | `d667d5c` |
+| **K** | 首屏 loading 体感优化：删 firebase.ts 的 testConnection 强一致 read（-200~800ms）+ index.html 加 inline branded splash + body bg + preconnect firestore/auth/securetoken（-50~200ms）+ App.tsx 的 Loading 文字改 branded splash（跟 inline splash 视觉连续无 flash） | `d16bf9d` |
 
-**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning / prod deploy 已上线。
+**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning / prod deploy 已上线（HEAD `d16bf9d`）。
 
 **未完成（移交下次）**：
 - "名字" 残留：`metadata.json` 的 `微习惯 (Micro Habits)` / `useStore.ts:254` 注释 / `README.md` URL / `package.json` name / GitHub repo / Vercel slug `micro-habits-zeta`（用户说"先不改"）

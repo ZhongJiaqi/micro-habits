@@ -1,14 +1,14 @@
 # Becoming — 交接文档
 
-> 上次更新: 2026-05-03 18:00
-> 上次会话产出: Becoming rebrand + 肯定语模块（11 个 plan task + 1 dogfood hotfix）
-> 当前 prod: `https://micro-habits-zeta.vercel.app`，main HEAD = `08b13ac`
+> 上次更新: 2026-05-05 14:55
+> 上次会话产出: 全部完成 confetti 回归 + 肯定语 4 层"心中一亮"动画 + bundle 拆分 + demo mode + F 设计登录页 + Will Durant tagline + 5 个 demo-flow E2E
+> 当前 prod: `https://micro-habits-zeta.vercel.app`（main 本地领先 push 待 deploy，HEAD = `514d52b`）
 
 ---
 
 ## 1. 一句话现状
 
-应用已从 `Micro Habits` 改名为 **Becoming**，引入 affirmations 作为一等内容类型（与 habits 并列）。所有代码 / spec / plan / firestore rules / Vercel prod / GitHub main / Firebase Auth domains 全部对齐。线上稳定可用，等用户实际使用反馈。
+应用已从 `Micro Habits` 改名为 **Becoming**，引入 affirmations 作为一等内容类型（与 habits 并列）。本次会话进一步：恢复 confetti 撒花动画、肯定语点亮升级为 4 层"心中一亮"组合动效、bundle 拆 5 个 vendor chunk + HistoryView 懒加载（首屏 main chunk -8KB）、新加 `?demo=1` 模式跳过 Firebase Auth、登录页换为 F 方案（timeline + 闪烁 cursor + outline button）、Practice tagline 换为 Will Durant、新增 5 个 demo-flow E2E。线上还是上次的 `08b13ac`，本会话改动**未 push 未 deploy**。
 
 ---
 
@@ -91,12 +91,19 @@ export interface HabitPoolItem {  // Hall of Fame
 
 | Tab | 内容 |
 |---|---|
-| **Today** | 每日打卡。Affirmations section 在上（italic + `&ldquo;...&rdquo;`），Habits section 在下（serif 正立）。空 section 标题不渲染。完成态：圆形 check 填 `#8A9A86` + line-through |
-| **Practice** | 管理 habits / affirmations。两个 section + 各自 + 按钮。顶部 James Clear tagline。Affirmations 空态文案 *"Words you live by, repeated."*；Habits 空态 *"The beginning of a new chapter."* |
-| **History** | Calendar heatmap + Best Streak + **Active Practices** (renamed from Active Habits) + Weekly Progress + The 21-Day Hall。顶部 filter `[All / Habits / Affirmations]`，filter 是视图镜头不持久化 |
+| **Today** | 每日打卡。Affirmations section 在上（italic + `&ldquo;...&rdquo;`），Habits section 在下（serif 正立）。空 section 标题不渲染。**习惯完成态**：圆形 check 填 `#8A9A86` + line-through。**肯定语完成态**：金圆点 `#C9A961` + 不划线 + 4 层"心中一亮"组合（一颗 ✨ scale 0→3.5 扩散 + 行尾常驻 ✨ overshoot 弹入 + 标题 textShadow 金色脉冲 1.4s + 行背景金色微光横扫 1.2s）。**全部完成态**：顶部 "All completed." 渐变带 + canvas-confetti 80 颗金色撒花（`disableForReducedMotion`） |
+| **Practice** | 管理 habits / affirmations。两个 section + 各自 + 按钮。顶部 **Will Durant tagline** *"You are what you repeatedly do."*（去引号 + 去名人归属，跟登录页 James Clear 句子去重）。Affirmations 空态 *"Words you live by, repeated."*；Habits 空态 *"The beginning of a new chapter."* |
+| **History** | Calendar heatmap + Best Streak + **Active Practices** + Weekly Progress + The 21-Day Hall。顶部 filter `[All / Habits / Affirmations]`，filter 是视图镜头不持久化。HistoryView 通过 `React.lazy` 懒加载（首屏不下载，独立 chunk 10.3 KB gzip） |
 
-**登录页 + Header**: 应用名 **Becoming** + James Clear 引文：
-> *"Every action you take is a vote for the type of person you wish to become."*
+**登录页（F 设计 — `LoginPage.tsx` 独立组件）**:
+- warm cream `#F5F2EC` 背景
+- header: 3-dot horizontal timeline，最右一个填充黑色 = "今天是开始"
+- 标题 `Becoming` 大字 serif + 后面闪烁 cursor `|`（视觉化 -ing 进行时态）
+- italic serif tagline（去引号 + 去名人归属）：*Every action you take is a vote for the type of person you wish to become.*
+- outline button "Continue with Google"，hover 时 left→right 黑色 fill
+- 三段独立 layout（header / main / footer 而不是单 max-w-md 容器，避免 absolute 定位错乱）
+
+**Header（应用内主面）**: 应用名 **Becoming** 大字 serif
 
 ---
 
@@ -105,20 +112,23 @@ export interface HabitPoolItem {  // Hall of Fame
 | 文件 | 责任 |
 |---|---|
 | `src/useStore.ts` | 中央 store hook。daily reset effect + lazy migrations（category backfill, one-time delete）+ `calculateStreak` 纯函数 + `addMicroHabit(title, category)` |
+| `src/useDemoStore.ts` | **新（本会话）** 同 useStore 接口的 in-memory store，4 条预置数据；用于 `?demo=1` 模式跳过 Firebase Auth |
 | `src/types.ts` | 类型定义 |
 | `src/firebase.ts` | Firebase 初始化 + same-origin authDomain override（仅 `*.vercel.app` 域名生效） |
 | `src/lib/auth.ts` | `signInWithGoogle` 检测 mobile/PWA → redirect，桌面 → popup |
-| `src/components/TodayView.tsx` | 每日打卡 UI（116 行，从 285 行精简） |
+| `src/components/TodayView.tsx` | 每日打卡 UI。**含 4 层"心中一亮"动效 + canvas-confetti 全部完成撒花** |
 | `src/components/PracticeView.tsx` | 双 section CRUD（重命名自 HabitsView）|
-| `src/components/HistoryView.tsx` | Calendar + filter + Hall |
+| `src/components/HistoryView.tsx` | Calendar + filter + Hall。**通过 React.lazy 懒加载** |
+| `src/components/LoginPage.tsx` | **新（本会话）** F 设计独立组件 — timeline + 闪烁 cursor + outline button |
 | `src/components/SwipeActions.tsx` | 移动端左滑编辑/删除（不动） |
-| `src/App.tsx` | tab 路由 + 登录页 + 推送权限 prompt |
-| `firestore.rules` | 安全规则（**已在 dogfood 阶段修复 isValidTask**） |
+| `src/App.tsx` | tab 路由 + 登录态 gate + demo 模式 + 推送权限 prompt。**接入 LoginPage + useDemoStore + HistoryView 懒加载** |
+| `firestore.rules` | 安全规则（已在上次会话 dogfood 修复 isValidTask） |
 | `vercel.json` | reverse proxy `/__/auth/*` 到 firebaseapp.com（绕 ITP）+ SPA fallback |
-| `vite.config.ts` | PWA manifest + `navigateFallbackDenylist: [/^\/__\//]`（防 SW 拦 OAuth handler） |
+| `vite.config.ts` | PWA manifest + `navigateFallbackDenylist: [/^\/__\//]` + **manualChunks 拆 5 个 vendor chunk**（firebase / motion / date-fns / lucide / confetti） |
 | `functions/src/index.ts` | dailyTaskReminder Cloud Function（v2 scheduled）|
 | `tests/useStore.test.ts` | 26 单元测试（含 calculateStreak / migration 测试） |
-| `tests/e2e/habits.spec.ts` | 7 E2E 测试（断言 Becoming brand + manifest + meta） |
+| `tests/e2e/habits.spec.ts` | 7 E2E 测试（登录页 brand + manifest + meta） |
+| `tests/e2e/demo-flow.spec.ts` | **新（本会话）** 5 个 demo-flow E2E（登录后 UI 渲染 / 交互 / 导航） |
 
 **Spec 和 Plan**:
 
@@ -128,7 +138,29 @@ export interface HabitPoolItem {  // Hall of Fame
 
 ---
 
-## 6. 这一次会话干了什么（时间线）
+## 6. 本次会话（2026-05-05）干了什么
+
+| Phase | 内容 | Commit |
+|---|---|---|
+| **A** | 全部完成 confetti 回归 + 肯定语 4 层"心中一亮"动画（一颗 ✨ 扩散 + 行尾常驻 ✨ + 标题暖辉 + 行背景金光横扫） | `93df78a` |
+| **B** | vite.config.ts 加 manualChunks 拆 4 vendor chunk（firebase/motion/date-fns/lucide）首屏 main 76→68 KB gzip | `6f87b13` |
+| **C** | F 设计登录页落地 + Practice tagline 换 Will Durant + E2E 同步去 James Clear 名字断言 | `7622633` |
+| **D** | demo mode：useDemoStore.ts 新增 + App.tsx 接 ?demo=1 跳过 Auth + Exit Demo 按钮 + 接入 LoginPage | `3579bb3` |
+| **E** | canvas-confetti 独立 vendor chunk + HistoryView 用 React.lazy 懒加载（独立 10.3 KB gzip） | `646a9c9` |
+| **F** | 5 个 demo-flow E2E（Today 双 section / 切 Practice 看 Will Durant / 切 History 看 Active Practices / 点击 toggle / Exit Demo 返登录） | `514d52b` |
+
+**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning。
+
+**未完成（移交下次）**：
+- gstack 1.26.0.0 → 1.26.3.0 升级（CLI self-modification guard 拦了 agent 自升，需用户手动 `cd ~/.claude/skills/gstack && git fetch && git reset --hard origin/main && ./setup`）
+- "名字" 残留：`metadata.json` 的 `微习惯 (Micro Habits)` / `useStore.ts:254` 注释 / `README.md` URL / `package.json` name / GitHub repo / Vercel slug `micro-habits-zeta`（用户说"先不改"）
+- Firebase Auth Emulator 真登录态 e2e（spec §10 推迟到 v2，已用 demo-flow 间接覆盖）
+- 配 OpenAI API key 让 design-shotgun 能真 AI 出图（写 `~/.gstack/openai.json` 或 `OPENAI_API_KEY` env）
+- 自定义域名 `becoming.app` / 应用市场 / 数据导出（spec §10 / handoff §8 已记录）
+
+---
+
+## 6.x 上次会话（2026-05-03）—— Becoming rebrand 史
 
 ### Phase 1：iOS 移动端登录修复（早晨）
 
@@ -278,19 +310,25 @@ c08d49f feat: 修 iOS 移动端登录失败 + 同步推送通知到 git
 
 ### 不阻塞但值得记录
 
-1. **Bundle 体积**: 882 KB / 242 KB gzipped。超 web/performance.md landing budget。Firebase SDK 占大头。**未来优化**：dynamic import + manualChunks。本次 plan 范围外。
+1. ~~**Bundle 体积**: 882 KB / 242 KB gzipped。超 landing budget。~~ **已部分解决（2026-05-05）**：拆 5 个 vendor chunk + HistoryView 懒加载，main chunk 76→68 KB gzip。Firebase SDK 仍占大头（108 KB gzip）但已独立缓存。下一步可以考虑动态 import firebase 直到用户登录后再加载（更激进）。
 
 2. **`store: any` 类型**: 所有 view 组件用 `store: any`，TS 不安全。沿用旧 pattern。**未来优化**：抽 `MicroHabitStore` interface，但跨多文件改动，scope creep。
 
-3. **package.json 仍是 `micro-habits`**: 没改成 becoming，避免 Vercel slug 重链接。Spec §7 明确决定保留。如果未来真要全面改名，再做单独 plan。
+3. **package.json 仍是 `micro-habits`**: 没改成 becoming，避免 Vercel slug 重链接。Spec §7 明确决定保留。本次会话用户也选了"先不改名"。
 
-4. **登录态 e2e 测试缺口**: Firebase Auth 让 Playwright 拿不到登录 session，Today/Practice/History 流程没自动化覆盖。**未来选项**：Firebase Auth Emulator（中等工程量）。spec §10 已记录为 deferred。
+4. ~~**登录态 e2e 测试缺口**~~ **已部分解决（2026-05-05）**：用 demo mode 替代 — 5 个 demo-flow E2E 覆盖登录后 UI 渲染 / 交互 / 导航。真 Firebase Auth 链路 e2e（用 Auth Emulator）仍 deferred 到 v2。
 
 5. **dailyTaskReminder Cloud Function 日志告警**: `firebase-debug.log` 里有 `show_missing is not supported for Enterprise Edition databases` 错误。可能不影响实际运行（function 仍在跑），但建议有空看一眼。
 
-6. **Continue with Google 按钮无 explicit aria-label**: 视觉够用，未来 i18n 时可统一处理。
+6. **gstack 升级被 self-modification guard 拦**: 1.26.0.0 → 1.26.3.0 提示已出现，agent 不能自升 ~/.claude/skills/gstack。用户手动一行：`! cd ~/.claude/skills/gstack && git fetch origin && git reset --hard origin/main && ./setup`
 
-7. **手机端 PWA 旧 SW 残留**: 用户手机如果加了 Becoming 到主屏幕，可能需要**删除 PWA + 清 Safari 数据 + 重启 iPhone** 才能拿到最新代码。这是 iOS Safari SW 顽固 bug，不是我们的问题。新用户加 PWA 直接是新版，无影响。
+7. **`?demo=1` 模式代码进 prod bundle**: useDemoStore 没有 `import.meta.env.DEV` 守卫，prod build 也包含约 2 KB demo store。可以加 dev guard tree-shake 掉，本次 minor 没做。
+
+8. **Continue with Google 按钮无 explicit aria-label**: 视觉够用，未来 i18n 时可统一处理。
+
+9. **手机端 PWA 旧 SW 残留**: 用户手机如果加了 Becoming 到主屏幕，可能需要**删除 PWA + 清 Safari 数据 + 重启 iPhone** 才能拿到最新代码。这是 iOS Safari SW 顽固 bug，不是我们的问题。新用户加 PWA 直接是新版，无影响。
+
+10. **localhost 不在 Firebase Auth authorized domains**: 本地 dev `npm run dev` 用真 Google 登录会报 `auth/unauthorized-domain`。**绕开方案**：用 `?demo=1` 进 demo 模式（已实现）。**永久解决**：Firebase Console → Authentication → Settings → Authorized domains → Add `localhost`。
 
 ### 数据迁移残余
 
@@ -328,13 +366,13 @@ npm run lint && npm test -- --run  # 快速 verify 健康
 
 ```bash
 # 本地开发
-npm run dev                      # vite dev :3000
+npm run dev                      # vite dev :3000（用 ?demo=1 跳过 Firebase Auth）
 npm run preview                  # vite preview :4173 (跑 dist 产物)
 
 # 验证
 npm run lint                     # tsc --noEmit (期望 0 errors)
-npm test -- --run                # vitest 单跑
-npm run test:e2e                 # Playwright (auto-build + preview)
+npm test -- --run                # vitest 单跑（26 unit）
+npm run test:e2e                 # Playwright (auto-build + preview)（12 e2e: 7 login + 5 demo）
 
 # 部署
 vercel --prod                    # 生产部署 (需 user authorized + token 有效)
@@ -344,6 +382,14 @@ firebase deploy --only functions # Cloud Functions deploy
 # 回滚
 vercel alias set <old-deployment-url> micro-habits-zeta.vercel.app  # 快速 alias 切回
 git revert HEAD                                                     # 代码回滚
+```
+
+### Demo 模式（本地开发 / 演示）
+
+```
+http://localhost:3000?demo=1     # 跳过 Firebase Auth，预置 4 条数据
+                                 # 2 affirmations + 2 habits 的 in-memory store
+                                 # Sign Out 按钮变 "Exit Demo"
 ```
 
 ### 紧急联系

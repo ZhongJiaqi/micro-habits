@@ -107,6 +107,25 @@ export default function App() {
     );
   }
 
+  // User is signed in but Firestore data hasn't arrived yet — keep showing
+  // the branded splash so views don't briefly render their empty-state copy
+  // ("No practices yet…") before real data lands.
+  if (user && !store.data.loaded) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: '#F5F2EC' }}
+      >
+        <h1
+          className="font-serif font-medium text-[#1A1A1A] leading-none animate-pulse"
+          style={{ fontSize: 'clamp(52px, 14vw, 76px)', letterSpacing: '0.01em' }}
+        >
+          Becoming
+        </h1>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F9F8F6] text-[#2C2C2C] font-sans flex flex-col items-center selection:bg-[#E2DFD8]">
       <div className="w-full max-w-md bg-[#F9F8F6] min-h-screen flex flex-col relative overflow-hidden shadow-2xl shadow-black/5">

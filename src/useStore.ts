@@ -109,29 +109,47 @@ interface AppData {
   microHabits: MicroHabit[];
   tasks: Task[];
   habitPool: HabitPoolItem[];
+  /**
+   * True once both microHabits AND tasks have received their first onSnapshot
+   * payload from Firestore. Until then, downstream views should show a loading
+   * placeholder rather than rendering empty-state copy ("No practices yet…")
+   * — that copy is only correct after data has actually loaded.
+   */
+  loaded: boolean;
 }
 
 const defaultData: AppData = {
   microHabits: [],
   tasks: [],
   habitPool: [],
+  loaded: false,
 };
 
 export function useStore(userId?: string) {
   const [data, setData] = useState<AppData>(defaultData);
   const tasksLoadedRef = useRef(false);
+  const microHabitsLoadedRef = useRef(false);
   // Track which habit-date combos we've already initiated task creation for,
   // to avoid redundant Firestore writes (even though setDoc is idempotent).
   const createdTaskIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     tasksLoadedRef.current = false;
+    microHabitsLoadedRef.current = false;
     const oneTimeMigrationDoneRef = { current: false };
     createdTaskIdsRef.current = new Set();
     if (!userId) {
       setData(defaultData);
       return;
     }
+
+    // Mark `loaded: true` only after BOTH core collections have arrived.
+    // habitPool is non-essential for first-paint, so we don't gate on it.
+    const markLoadedIfReady = () => {
+      if (tasksLoadedRef.current && microHabitsLoadedRef.current) {
+        setData(prev => (prev.loaded ? prev : { ...prev, loaded: true }));
+      }
+    };
 
     // Ensure user document exists (needed for Cloud Function to discover users)
     setDoc(doc(db, `users/${userId}`), { lastSeen: new Date().toISOString() }, { merge: true }).catch(() => {});
@@ -152,7 +170,9 @@ export function useStore(userId?: string) {
           /* migration failure non-fatal, will retry next session */
         });
       });
+      microHabitsLoadedRef.current = true;
       setData(prev => ({ ...prev, microHabits }));
+      markLoadedIfReady();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, microHabitsPath);
     });
@@ -170,6 +190,7 @@ export function useStore(userId?: string) {
       const tasks = rawTasks.filter(t => t.type !== 'one-time') as Task[];
       tasksLoadedRef.current = true;
       setData(prev => ({ ...prev, tasks }));
+      markLoadedIfReady();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, tasksPath);
     });

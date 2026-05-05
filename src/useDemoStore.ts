@@ -66,7 +66,7 @@ export function useDemoStore() {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   return {
-    data: { microHabits, tasks, habitPool },
+    data: { microHabits, tasks, habitPool, loaded: true },
 
     toggleTaskCompletion: (id: string) => {
       setTasks(prev => prev.map(t => (t.id === id ? { ...t, completed: !t.completed } : t)));

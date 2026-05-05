@@ -16,13 +16,40 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Count consecutive missed days for a habit, looking backwards from today
+ * (exclusive). Stops at: first completed day, habit's createdAt boundary,
+ * or 365-day safety cap.
+ */
+function daysSinceLastCompletion(
+  habit: MicroHabit,
+  today: string,
+  allTasks: Task[],
+): number {
+  const habitCreatedDate = habit.createdAt.slice(0, 10);
+  const todayD = new Date(today);
+  let missed = 0;
+  for (let i = 1; i < 365; i++) {
+    const d = new Date(todayD.getTime() - i * 86400000);
+    const ds = format(d, "yyyy-MM-dd");
+    if (ds < habitCreatedDate) break;
+    const wasCompleted = allTasks.some(
+      (t) => t.habitId === habit.id && t.date === ds && t.completed,
+    );
+    if (wasCompleted) break;
+    missed++;
+  }
+  return missed;
+}
+
 interface TaskRowProps {
   task: Task;
   isAffirmation: boolean;
+  missedDays: number;
   onToggle: () => void;
 }
 
-function TaskRow({ task, isAffirmation, onToggle }: TaskRowProps) {
+function TaskRow({ task, isAffirmation, missedDays, onToggle }: TaskRowProps) {
   const isAffirmationDone = isAffirmation && task.completed;
   const isHabitDone = !isAffirmation && task.completed;
 
@@ -94,7 +121,7 @@ function TaskRow({ task, isAffirmation, onToggle }: TaskRowProps) {
       </div>
 
       <span
-        className={`flex-1 text-[15px] font-serif transition-colors relative ${titleClass} ${
+        className={`flex-1 min-w-0 text-[15px] font-serif transition-colors relative ${titleClass} ${
           isAffirmation ? "italic" : ""
         }`}
       >
@@ -144,6 +171,18 @@ function TaskRow({ task, isAffirmation, onToggle }: TaskRowProps) {
           )}
         </AnimatePresence>
       </span>
+
+      {/* Quiet-streak nudge — surfaces when a practice has been silent ≥ 3 days
+          (excluding today). Tone: warm, not punitive. */}
+      {!task.completed && missedDays >= 3 && (
+        <span
+          className="text-[10px] italic text-[#A09E9A] tracking-wide whitespace-nowrap not-italic"
+          aria-label={`${missedDays} days since last completion`}
+          title={`${missedDays} days since last completion`}
+        >
+          {missedDays} days quiet
+        </span>
+      )}
     </div>
   );
 }
@@ -153,9 +192,18 @@ export default function TodayView({ store }: TodayViewProps) {
   const tasksToday = store.data.tasks.filter((t: Task) => t.date === today);
 
   const habitCategoryMap = new Map<string, "habit" | "affirmation">();
+  const habitById = new Map<string, MicroHabit>();
   store.data.microHabits.forEach((h: MicroHabit) => {
     habitCategoryMap.set(h.id, h.category ?? "habit");
+    habitById.set(h.id, h);
   });
+
+  const allTasks: Task[] = store.data.tasks;
+  const missedDaysByHabitId = new Map<string, number>();
+  store.data.microHabits.forEach((h: MicroHabit) => {
+    missedDaysByHabitId.set(h.id, daysSinceLastCompletion(h, today, allTasks));
+  });
+  const getMissed = (habitId: string) => missedDaysByHabitId.get(habitId) ?? 0;
 
   const affirmations = tasksToday.filter(
     (t: Task) => habitCategoryMap.get(t.habitId) === "affirmation",
@@ -218,6 +266,7 @@ export default function TodayView({ store }: TodayViewProps) {
                 <TaskRow
                   task={task}
                   isAffirmation
+                  missedDays={getMissed(task.habitId)}
                   onToggle={() => store.toggleTaskCompletion(task.id)}
                 />
               </div>
@@ -237,6 +286,7 @@ export default function TodayView({ store }: TodayViewProps) {
                 <TaskRow
                   task={task}
                   isAffirmation={false}
+                  missedDays={getMissed(task.habitId)}
                   onToggle={() => store.toggleTaskCompletion(task.id)}
                 />
               </div>

@@ -38,8 +38,11 @@ export default function NotificationPrompt({ userId }: { userId: string }) {
       setVisible(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      // 用 finally 而不是裸调，确保即便 setVisible/setError 抛错也会复位 requesting，
+      // 不让按钮永远停在"请求中..."。
+      setRequesting(false);
     }
-    setRequesting(false);
   };
 
   const handleDismiss = () => {

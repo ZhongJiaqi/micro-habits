@@ -1,7 +1,14 @@
 import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { withTimeout } from './timeout';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+
+// 各步骤超时，确保 UI 不会永远卡在"请求中..."。
+// SW 注册较快，给 8s；FCM 订阅可能受网络环境影响，给 15s；Firestore 写入给 10s。
+const SW_READY_TIMEOUT_MS = 8000;
+const PUSH_SUBSCRIBE_TIMEOUT_MS = 15000;
+const FIRESTORE_WRITE_TIMEOUT_MS = 10000;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -46,26 +53,42 @@ export async function requestPermissionAndSubscribe(userId: string): Promise<Pus
   if (!VAPID_PUBLIC_KEY) throw new Error('VAPID_KEY 未配置');
 
   // Use the PWA service worker (which includes push-handler.js via importScripts)
-  const swReg = await navigator.serviceWorker.ready;
+  // dev 模式下 PWA 默认未启用 / 注册失败时，serviceWorker.ready 会永远挂起，
+  // 必须超时降级以避免 UI 卡死。
+  const swReg = await withTimeout(
+    navigator.serviceWorker.ready,
+    SW_READY_TIMEOUT_MS,
+    'Service Worker 未就绪',
+  );
 
   let subscription = await swReg.pushManager.getSubscription();
   if (!subscription) {
-    subscription = await swReg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+    // pushManager.subscribe 需要联系浏览器厂商的推送服务（Chrome → FCM 等），
+    // 网络受限时可能长时间不返回，必须设置上界。
+    subscription = await withTimeout(
+      swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      }),
+      PUSH_SUBSCRIBE_TIMEOUT_MS,
+      '订阅推送服务',
+    );
   }
 
   // Store in Firestore — use endpoint hash as doc ID for idempotency
   const subJson = subscription.toJSON();
   const docId = btoa(subscription.endpoint).replace(/[/+=]/g, '_').slice(-80);
 
-  await setDoc(doc(db, `users/${userId}/pushSubscriptions/${docId}`), {
-    endpoint: subJson.endpoint,
-    keys: subJson.keys,
-    createdAt: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-  });
+  await withTimeout(
+    setDoc(doc(db, `users/${userId}/pushSubscriptions/${docId}`), {
+      endpoint: subJson.endpoint,
+      keys: subJson.keys,
+      createdAt: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+    }),
+    FIRESTORE_WRITE_TIMEOUT_MS,
+    '保存订阅到云端',
+  );
 
   return subscription;
 }

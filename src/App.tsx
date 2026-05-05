@@ -6,6 +6,8 @@ import PracticeView from './components/PracticeView';
 import HistoryView from './components/HistoryView';
 import NotificationPrompt from './components/NotificationPrompt';
 import { useStore } from './useStore';
+import { useDemoStore, isDemoMode } from './useDemoStore';
+import LoginPage from './components/LoginPage';
 import { auth, db } from './firebase';
 import { requestPermissionAndSubscribe, isPushSupported } from './lib/messaging';
 import { signInWithGoogle, consumeRedirectResult } from './lib/auth';
@@ -18,7 +20,10 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginPending, setLoginPending] = useState(false);
-  const store = useStore(user?.uid);
+  const demoMode = isDemoMode();
+  const realStore = useStore(user?.uid);
+  const demoStore = useDemoStore();
+  const store = demoMode ? demoStore : realStore;
 
   useEffect(() => {
     let cancelled = false;
@@ -72,31 +77,17 @@ export default function App() {
     }
   };
 
-  if (!authReady) {
+  if (!authReady && !demoMode) {
     return <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">Loading...</div>;
   }
 
-  if (!user) {
+  if (!user && !demoMode) {
     return (
-      <div className="min-h-screen bg-[#F9F8F6] text-[#2C2C2C] font-sans flex flex-col items-center justify-center selection:bg-[#E2DFD8]">
-        <div className="w-full max-w-md p-8 text-center">
-          <h1 className="text-4xl font-serif font-medium tracking-widest text-[#1A1A1A] mb-4">Becoming</h1>
-          <p className="text-[#8C8C8C] mb-2 text-sm leading-relaxed italic">&ldquo;Every action you take is a vote for the type of person you wish to become.&rdquo;</p>
-          <p className="text-[10px] text-[#A09E9A] tracking-widest uppercase mb-12">— James Clear</p>
-          <button
-            onClick={handleLogin}
-            disabled={loginPending}
-            className="w-full bg-[#1A1A1A] text-[#F9F8F6] py-4 rounded-2xl font-medium tracking-wide hover:bg-[#2C2C2C] transition-colors disabled:opacity-60"
-          >
-            {loginPending ? 'Signing in...' : 'Continue with Google'}
-          </button>
-          {loginError && (
-            <p className="mt-6 text-xs text-red-600 break-all leading-relaxed" role="alert">
-              {loginError}
-            </p>
-          )}
-        </div>
-      </div>
+      <LoginPage
+        onLogin={handleLogin}
+        loginPending={loginPending}
+        loginError={loginError}
+      />
     );
   }
 
@@ -111,19 +102,27 @@ export default function App() {
             <div className="text-[10px] font-medium tracking-[0.2em] text-[#8C8C8C] uppercase">
               {new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}
             </div>
-            <button 
-              onClick={() => auth.signOut()}
+            <button
+              onClick={() => {
+                if (demoMode) {
+                  window.location.search = '';
+                } else {
+                  auth.signOut();
+                }
+              }}
               className="text-[10px] font-medium tracking-wider text-[#8C8C8C] uppercase hover:text-[#1A1A1A] transition-colors"
             >
-              Sign Out
+              {demoMode ? 'Exit Demo' : 'Sign Out'}
             </button>
           </div>
         </header>
 
         {/* Notification Permission Prompt */}
-        <div className="px-8">
-          <NotificationPrompt userId={user.uid} />
-        </div>
+        {user && (
+          <div className="px-8">
+            <NotificationPrompt userId={user.uid} />
+          </div>
+        )}
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-28 relative px-8">

@@ -9,10 +9,45 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" href="/favicon.ico" />
+
+    <!-- Preconnect to Firebase backend hosts so the TLS handshake starts before
+         the JS bundle finishes parsing. Saves ~50-200ms on cold loads. -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin />
+
     <title>Becoming</title>
+
+    <!-- Inline splash: rendered immediately by the browser before React mounts.
+         When React renders into #root, this content is replaced with the real UI.
+         Eliminates the white flash + shows the brand mark instantly. -->
+    <style>
+      html, body { margin: 0; padding: 0; background: #F5F2EC; }
+      #root-splash {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-serif, Georgia, 'Times New Roman', serif;
+        color: #1A1A1A;
+      }
+      #root-splash .brand {
+        font-size: clamp(52px, 14vw, 76px);
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        line-height: 1;
+        animation: brand-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes brand-pulse {
+        0%, 100% { opacity: 0.45; }
+        50%      { opacity: 1; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="root-splash"><div class="brand">Becoming</div></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

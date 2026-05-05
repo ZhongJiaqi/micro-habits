@@ -80,7 +80,21 @@ export default function App() {
   };
 
   if (!authReady && !demoMode) {
-    return <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">Loading...</div>;
+    // Branded splash — matches the inline #root-splash in index.html so
+    // the transition from server-rendered HTML to React-rendered UI is seamless.
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: '#F5F2EC' }}
+      >
+        <h1
+          className="font-serif font-medium text-[#1A1A1A] leading-none animate-pulse"
+          style={{ fontSize: 'clamp(52px, 14vw, 76px)', letterSpacing: '0.01em' }}
+        >
+          Becoming
+        </h1>
+      </div>
+    );
   }
 
   if (!user && !demoMode) {

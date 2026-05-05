@@ -6,13 +6,18 @@ const DEMO_USER_ID = 'demo-user';
 
 function makeInitial() {
   const today = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date().toISOString();
+  const now = new Date();
+  // Backdate habit creation 30 days so daysSinceLastCompletion can look back.
+  const createdAt = new Date(now.getTime() - 30 * 86400000).toISOString();
+
   const habits: MicroHabit[] = [
-    { id: 'a1', title: 'I am enough.', createdAt: now, active: true, userId: DEMO_USER_ID, category: 'affirmation' },
-    { id: 'a2', title: 'Today, I choose calm.', createdAt: now, active: true, userId: DEMO_USER_ID, category: 'affirmation' },
-    { id: 'h1', title: '散步 30 分钟', createdAt: now, active: true, userId: DEMO_USER_ID, category: 'habit' },
-    { id: 'h2', title: '读书 20 页', createdAt: now, active: true, userId: DEMO_USER_ID, category: 'habit' },
+    { id: 'a1', title: 'I am enough.',          createdAt, active: true, userId: DEMO_USER_ID, category: 'affirmation' },
+    { id: 'a2', title: 'Today, I choose calm.', createdAt, active: true, userId: DEMO_USER_ID, category: 'affirmation' },
+    { id: 'h1', title: '散步 30 分钟',          createdAt, active: true, userId: DEMO_USER_ID, category: 'habit' },
+    { id: 'h2', title: '读书 20 页',            createdAt, active: true, userId: DEMO_USER_ID, category: 'habit' },
   ];
+
+  // Today's tasks (uncompleted).
   const tasks: Task[] = habits.map(h => ({
     id: `${h.id}_${today}`,
     title: h.title,
@@ -21,6 +26,34 @@ function makeInitial() {
     habitId: h.id,
     userId: DEMO_USER_ID,
   }));
+
+  // Historical task data — designed to exercise both new features:
+  //   • h1 (散步)         → 25 days completed → in Hall, no quiet streak
+  //   • h2 (读书)         → 22 days completed → in Hall, no quiet streak
+  //   • a1 (I am enough.) → 18 days completed, last 5 days silent → "5 days quiet"
+  //   • a2 (calm)         →  4 days completed, completed yesterday → no quiet
+  const h1SkipDays = [3, 7, 12];
+  const h2SkipDays = [4, 8, 14, 18, 22, 28];
+  for (let i = 1; i <= 28; i++) {
+    const d = new Date(now.getTime() - i * 86400000);
+    const ds = format(d, 'yyyy-MM-dd');
+
+    if (!h1SkipDays.includes(i)) {
+      tasks.push({ id: `h1_${ds}`, title: '散步 30 分钟', date: ds, completed: true, habitId: 'h1', userId: DEMO_USER_ID });
+    }
+    if (!h2SkipDays.includes(i)) {
+      tasks.push({ id: `h2_${ds}`, title: '读书 20 页', date: ds, completed: true, habitId: 'h2', userId: DEMO_USER_ID });
+    }
+    // a1: completed days 6-25 except 10 and 15 → 18 total, last completion 6 days ago → 5 days quiet
+    if (i >= 6 && i <= 25 && i !== 10 && i !== 15) {
+      tasks.push({ id: `a1_${ds}`, title: 'I am enough.', date: ds, completed: true, habitId: 'a1', userId: DEMO_USER_ID });
+    }
+    // a2: sparse (4 total), most recent = yesterday → no quiet
+    if ([1, 4, 8, 15].includes(i)) {
+      tasks.push({ id: `a2_${ds}`, title: 'Today, I choose calm.', date: ds, completed: true, habitId: 'a2', userId: DEMO_USER_ID });
+    }
+  }
+
   return { habits, tasks };
 }
 

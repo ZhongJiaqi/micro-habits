@@ -1,14 +1,14 @@
 # Becoming — 交接文档
 
-> 上次更新: 2026-05-05 14:55
-> 上次会话产出: 全部完成 confetti 回归 + 肯定语 4 层"心中一亮"动画 + bundle 拆分 + demo mode + F 设计登录页 + Will Durant tagline + 5 个 demo-flow E2E
-> 当前 prod: `https://micro-habits-zeta.vercel.app`（main 本地领先 push 待 deploy，HEAD = `514d52b`）
+> 上次更新: 2026-05-05 15:35
+> 上次会话产出: 全部完成 confetti 回归 + 肯定语 4 层"心中一亮"动画 + bundle 拆分 + demo mode + F 设计登录页 + Will Durant tagline + 5 个 demo-flow E2E + Hall 改累计 21 次 + Today quiet streak 提醒
+> 当前 prod: `https://micro-habits-zeta.vercel.app`，main HEAD = `d667d5c`（已 push + deployed）
 
 ---
 
 ## 1. 一句话现状
 
-应用已从 `Micro Habits` 改名为 **Becoming**，引入 affirmations 作为一等内容类型（与 habits 并列）。本次会话进一步：恢复 confetti 撒花动画、肯定语点亮升级为 4 层"心中一亮"组合动效、bundle 拆 5 个 vendor chunk + HistoryView 懒加载（首屏 main chunk -8KB）、新加 `?demo=1` 模式跳过 Firebase Auth、登录页换为 F 方案（timeline + 闪烁 cursor + outline button）、Practice tagline 换为 Will Durant、新增 5 个 demo-flow E2E。线上还是上次的 `08b13ac`，本会话改动**未 push 未 deploy**。
+应用已从 `Micro Habits` 改名为 **Becoming**，引入 affirmations 作为一等内容类型（与 habits 并列）。本次会话进一步：恢复 confetti 撒花动画、肯定语点亮升级为 4 层"心中一亮"组合动效、bundle 拆 5 个 vendor chunk + HistoryView 懒加载（首屏 main chunk -8KB）、新加 `?demo=1` 模式跳过 Firebase Auth、登录页换为 F 方案（timeline + 闪烁 cursor + outline button）、Practice tagline 换为 Will Durant、Hall of Fame 改累计 21 次 view-computed（不再依赖 firestore 写入触发，老用户成就自动补回）、Today 页加 quiet streak 提醒（连续 3+ 天没完成显示 `X days quiet`）、新增 5 个 demo-flow E2E。线上 prod 已 deploy。
 
 ---
 
@@ -91,9 +91,9 @@ export interface HabitPoolItem {  // Hall of Fame
 
 | Tab | 内容 |
 |---|---|
-| **Today** | 每日打卡。Affirmations section 在上（italic + `&ldquo;...&rdquo;`），Habits section 在下（serif 正立）。空 section 标题不渲染。**习惯完成态**：圆形 check 填 `#8A9A86` + line-through。**肯定语完成态**：金圆点 `#C9A961` + 不划线 + 4 层"心中一亮"组合（一颗 ✨ scale 0→3.5 扩散 + 行尾常驻 ✨ overshoot 弹入 + 标题 textShadow 金色脉冲 1.4s + 行背景金色微光横扫 1.2s）。**全部完成态**：顶部 "All completed." 渐变带 + canvas-confetti 80 颗金色撒花（`disableForReducedMotion`） |
+| **Today** | 每日打卡。Affirmations section 在上（italic + `&ldquo;...&rdquo;`），Habits section 在下（serif 正立）。空 section 标题不渲染。**习惯完成态**：圆形 check 填 `#8A9A86` + line-through。**肯定语完成态**：金圆点 `#C9A961` + 不划线 + 4 层"心中一亮"组合（一颗 ✨ scale 0→3.5 扩散 + 行尾常驻 ✨ overshoot 弹入 + 标题 textShadow 金色脉冲 1.4s + 行背景金色微光横扫 1.2s）。**全部完成态**：顶部 "All completed." 渐变带 + canvas-confetti 80 颗金色撒花（`disableForReducedMotion`）。**Quiet streak 提醒**：未完成 task 行尾显示 `{N} days quiet`（连续 3+ 天没完成时；温和措辞，跟品牌调性一致；不超出 habit 创建之前） |
 | **Practice** | 管理 habits / affirmations。两个 section + 各自 + 按钮。顶部 **Will Durant tagline** *"You are what you repeatedly do."*（去引号 + 去名人归属，跟登录页 James Clear 句子去重）。Affirmations 空态 *"Words you live by, repeated."*；Habits 空态 *"The beginning of a new chapter."* |
-| **History** | Calendar heatmap + Best Streak + **Active Practices** + Weekly Progress + The 21-Day Hall。顶部 filter `[All / Habits / Affirmations]`，filter 是视图镜头不持久化。HistoryView 通过 `React.lazy` 懒加载（首屏不下载，独立 chunk 10.3 KB gzip） |
+| **History** | Calendar heatmap + Best Streak + **Active Practices** + Weekly Progress + **The 21-Day Hall（view-computed）**。顶部 filter `[All / Habits / Affirmations]`，filter 是视图镜头不持久化。HistoryView 通过 `React.lazy` 懒加载（首屏不下载，独立 chunk 10.3 KB gzip）。**Hall 入选**：任何 microHabit 累计 completed >= 21 次进入（不再依赖 useStore 触发 firestore 写入，老用户已有成就自动补回），按 count 倒序，显示 `{N} Times Completed` + Achieved 第 21 次完成的实际日期；filter 感知 |
 
 **登录页（F 设计 — `LoginPage.tsx` 独立组件）**:
 - warm cream `#F5F2EC` 背景
@@ -148,15 +148,20 @@ export interface HabitPoolItem {  // Hall of Fame
 | **D** | demo mode：useDemoStore.ts 新增 + App.tsx 接 ?demo=1 跳过 Auth + Exit Demo 按钮 + 接入 LoginPage | `3579bb3` |
 | **E** | canvas-confetti 独立 vendor chunk + HistoryView 用 React.lazy 懒加载（独立 10.3 KB gzip） | `646a9c9` |
 | **F** | 5 个 demo-flow E2E（Today 双 section / 切 Practice 看 Will Durant / 切 History 看 Active Practices / 点击 toggle / Exit Demo 返登录） | `514d52b` |
+| **G** | Vercel deploy + gstack 自升级 1.26.0.0→1.26.3.0 | (deploy + gstack git reset) |
+| **H** | Hall 改累计 21 次 view-computed（不再依赖 habitPool firestore 写入触发，老用户成就自动补回，按 count 倒序，显示 Achieved 第 21 次完成日期） | `83ec243` |
+| **I** | Today 加 quiet streak 提醒（未完成 task 连续 3+ 天没完成时显示 `{N} days quiet`） | `5e3d665` |
+| **J** | useDemoStore 扩展 30 天历史 task，演示 Hall + quiet streak 两个特性 | `d667d5c` |
 
-**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning。
+**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning / prod deploy 已上线。
 
 **未完成（移交下次）**：
-- gstack 1.26.0.0 → 1.26.3.0 升级（CLI self-modification guard 拦了 agent 自升，需用户手动 `cd ~/.claude/skills/gstack && git fetch && git reset --hard origin/main && ./setup`）
 - "名字" 残留：`metadata.json` 的 `微习惯 (Micro Habits)` / `useStore.ts:254` 注释 / `README.md` URL / `package.json` name / GitHub repo / Vercel slug `micro-habits-zeta`（用户说"先不改"）
 - Firebase Auth Emulator 真登录态 e2e（spec §10 推迟到 v2，已用 demo-flow 间接覆盖）
 - 配 OpenAI API key 让 design-shotgun 能真 AI 出图（写 `~/.gstack/openai.json` 或 `OPENAI_API_KEY` env）
 - 自定义域名 `becoming.app` / 应用市场 / 数据导出（spec §10 / handoff §8 已记录）
+- `useStore.ts:329-350` Hall firestore 写入 dead code（保留不删，下次重构清）
+- `quiet streak` 提醒在 Practice 页是否也需要（目前仅 Today 页显示，Practice 是管理页可能也想看）
 
 ---
 

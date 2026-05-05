@@ -40,6 +40,35 @@ export default defineConfig(({mode}) => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Firebase SDK — large, stable, benefits most from long-term caching
+            if (id.includes('/node_modules/firebase/') || id.includes('/node_modules/@firebase/')) {
+              return 'vendor-firebase';
+            }
+            // Motion / framer-motion and their sub-packages
+            if (
+              id.includes('/node_modules/motion/') ||
+              id.includes('/node_modules/motion-dom/') ||
+              id.includes('/node_modules/motion-utils/') ||
+              id.includes('/node_modules/framer-motion/')
+            ) {
+              return 'vendor-motion';
+            }
+            // date-fns
+            if (id.includes('/node_modules/date-fns/')) {
+              return 'vendor-date-fns';
+            }
+            // lucide-react icon set
+            if (id.includes('/node_modules/lucide-react/')) {
+              return 'vendor-lucide';
+            }
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -178,10 +178,7 @@ export default function PracticeView({ store }: PracticeViewProps) {
     <div className="pb-12">
       <div className="mb-10 pt-4">
         <p className="text-xs text-[#8C8C8C] leading-relaxed font-light tracking-wide italic">
-          &ldquo;Every action you take is a vote for the type of person you wish to become.&rdquo;
-        </p>
-        <p className="text-[10px] text-[#A09E9A] tracking-widest uppercase mt-2">
-          — James Clear
+          You are what you repeatedly do.
         </p>
       </div>
 

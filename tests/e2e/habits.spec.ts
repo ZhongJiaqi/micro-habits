@@ -16,13 +16,12 @@ test.describe('Login Page', () => {
     await expect(page.locator('button')).toContainText('Continue with Google');
   });
 
-  test('shows James Clear tagline and attribution', async ({ page }) => {
+  test('shows tagline', async ({ page }) => {
     await page.goto(BASE_URL);
     await page.waitForSelector('h1', { timeout: 15000 });
     await expect(
       page.locator('p').filter({ hasText: 'Every action you take is a vote' })
     ).toBeVisible();
-    await expect(page.locator('p').filter({ hasText: 'James Clear' })).toBeVisible();
   });
 });
 

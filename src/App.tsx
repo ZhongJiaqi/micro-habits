@@ -20,7 +20,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'today' | 'practice' | 'history'>('today');
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [showLoginPage, setShowLoginPage] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginPending, setLoginPending] = useState(false);
   const demoMode = isDemoMode();
@@ -47,21 +46,6 @@ export default function App() {
       unsubscribe();
     };
   }, []);
-
-  // Grace period before committing to LoginPage when auth says user=null.
-  // Firebase's initial onAuthStateChanged callback can fire user=null even
-  // when a session exists — especially on iOS PWA where IndexedDB persistence
-  // is flaky — and then fire the real user ~0.5-1.5s later. Without this
-  // grace period the LoginPage flashes before the splash → real-data flow.
-  useEffect(() => {
-    if (demoMode || user) {
-      setShowLoginPage(false);
-      return;
-    }
-    if (!authReady) return;
-    const timer = setTimeout(() => setShowLoginPage(true), 1500);
-    return () => clearTimeout(timer);
-  }, [user, authReady, demoMode]);
 
   // Auto-recover push subscription: if permission is granted but no subscription in Firestore, re-register
   useEffect(() => {
@@ -98,26 +82,6 @@ export default function App() {
   if (!authReady && !demoMode) {
     // Branded splash — matches the inline #root-splash in index.html so
     // the transition from server-rendered HTML to React-rendered UI is seamless.
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: '#F5F2EC' }}
-      >
-        <h1
-          className="font-serif font-medium text-[#1A1A1A] leading-none animate-pulse"
-          style={{ fontSize: 'clamp(52px, 14vw, 76px)', letterSpacing: '0.01em' }}
-        >
-          Becoming
-        </h1>
-      </div>
-    );
-  }
-
-  // user=null + authReady=true could be (a) genuinely signed out, or (b) the
-  // first onAuthStateChanged callback before Firebase finishes restoring the
-  // cached session. Stay on the splash during the grace period; only commit
-  // to LoginPage after `showLoginPage` flips true.
-  if (!user && !showLoginPage && !demoMode) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"

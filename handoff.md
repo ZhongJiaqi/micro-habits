@@ -153,8 +153,9 @@ export interface HabitPoolItem {  // Hall of Fame
 | **I** | Today 加 quiet streak 提醒（未完成 task 连续 3+ 天没完成时显示 `{N} days quiet`） | `5e3d665` |
 | **J** | useDemoStore 扩展 30 天历史 task，演示 Hall + quiet streak 两个特性 | `d667d5c` |
 | **K** | 首屏 loading 体感优化：删 firebase.ts 的 testConnection 强一致 read（-200~800ms）+ index.html 加 inline branded splash + body bg + preconnect firestore/auth/securetoken（-50~200ms）+ App.tsx 的 Loading 文字改 branded splash（跟 inline splash 视觉连续无 flash） | `d16bf9d` |
+| **L** | 修复 Today 短暂闪现"No practices yet"空态：useStore 加 `loaded` flag（microHabits + tasks 双首次回调后才标 true），App.tsx 在 `user && !data.loaded` 时继续显示 branded splash，避免登录后 firestore 数据未到位时空态文案误闪。useDemoStore 同步加 `loaded: true` | `b688016` |
 
-**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning / prod deploy 已上线（HEAD `d16bf9d`）。
+**总验证状态**：lint 0 错 / 26 单元测试通过 / 12 个 E2E 全过 / build 0 warning / prod deploy 已上线（HEAD `b688016`）。
 
 **未完成（移交下次）**：
 - "名字" 残留：`metadata.json` 的 `微习惯 (Micro Habits)` / `useStore.ts:254` 注释 / `README.md` URL / `package.json` name / GitHub repo / Vercel slug `micro-habits-zeta`（用户说"先不改"）

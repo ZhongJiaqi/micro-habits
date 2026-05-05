@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, differenceInDays, parseISO } from 'date-fns';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Task, HabitPoolItem, MicroHabit } from '../types';
+import { Task, MicroHabit } from '../types';
 import { cn } from '../lib/utils';
 
 type Filter = 'all' | 'habit' | 'affirmation';
 
 export default function HistoryView({ store }: { store: any }) {
-  const { tasks, habitPool, microHabits } = store.data;
+  const { tasks, microHabits } = store.data;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -203,43 +203,97 @@ export default function HistoryView({ store }: { store: any }) {
         </div>
       </div>
 
-      {/* Habit Pool */}
+      {/* The 21-Day Hall — view-computed: any microHabit with >= 21 total
+          completed days lands here, sorted by completion count descending.
+          Filter-aware (respects All / Habits / Affirmations toggle). */}
       <div>
         <h2 className="text-[10px] font-medium text-[#A09E9A] uppercase tracking-[0.2em] mb-6 text-center">
           The 21-Day Hall
         </h2>
-        
-        {habitPool.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="font-serif italic text-sm text-[#B0ADA5]">Consistency builds character.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {habitPool.map((item: HabitPoolItem) => {
-              const completedDays = tasks.filter((t: Task) => t.habitId === item.habitId && t.completed).length;
-              const isAffirmation = habitCategoryMap.get(item.habitId) === 'affirmation';
 
-              return (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  key={item.id}
-                  className="flex items-center justify-between py-4 border-b border-[#EAE8E3]"
-                >
-                  <div className="flex flex-col gap-1">
-                    <span className={`text-[15px] font-serif text-[#2C2C2C] ${isAffirmation ? 'italic' : ''}`}>
-                      {isAffirmation && <span className="text-[#A09E9A]">&ldquo;</span>}
-                      {item.title}
-                      {isAffirmation && <span className="text-[#A09E9A]">&rdquo;</span>}
-                    </span>
-                    <span className="text-[10px] text-[#A09E9A] tracking-widest uppercase">{completedDays} Days Completed</span>
-                  </div>
-                  <span className="text-[10px] text-[#A09E9A] tracking-widest uppercase text-right">Achieved<br/>{item.achievedDate}</span>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
+        {(() => {
+          // For each microHabit (filter-aware) compute completion count + the
+          // exact date the 21st completion landed (= achievedDate).
+          const hallEntries = microHabits
+            .filter((h: MicroHabit) => {
+              if (filter !== 'all' && (h.category ?? 'habit') !== filter) return false;
+              const completedCount = tasks.filter(
+                (t: Task) => t.habitId === h.id && t.completed,
+              ).length;
+              return completedCount >= 21;
+            })
+            .map((h: MicroHabit) => {
+              const completedSorted = tasks
+                .filter((t: Task) => t.habitId === h.id && t.completed)
+                .sort((a: Task, b: Task) => a.date.localeCompare(b.date));
+              return {
+                id: h.id,
+                title: h.title,
+                category: h.category ?? 'habit',
+                count: completedSorted.length,
+                achievedDate: completedSorted[20].date, // the 21st completion's date
+              };
+            })
+            .sort(
+              (a: { count: number }, b: { count: number }) => b.count - a.count,
+            );
+
+          if (hallEntries.length === 0) {
+            return (
+              <div className="text-center py-8">
+                <p className="font-serif italic text-sm text-[#B0ADA5]">
+                  Consistency builds character.
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-4">
+              {hallEntries.map(
+                (entry: {
+                  id: string;
+                  title: string;
+                  category: 'habit' | 'affirmation';
+                  count: number;
+                  achievedDate: string;
+                }) => {
+                  const isAffirmation = entry.category === 'affirmation';
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      key={entry.id}
+                      className="flex items-center justify-between py-4 border-b border-[#EAE8E3]"
+                    >
+                      <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <span
+                          className={`text-[15px] font-serif text-[#2C2C2C] truncate ${
+                            isAffirmation ? 'italic' : ''
+                          }`}
+                        >
+                          {isAffirmation && (
+                            <span className="text-[#A09E9A]">&ldquo;</span>
+                          )}
+                          {entry.title}
+                          {isAffirmation && (
+                            <span className="text-[#A09E9A]">&rdquo;</span>
+                          )}
+                        </span>
+                        <span className="text-[10px] text-[#A09E9A] tracking-widest uppercase">
+                          {entry.count} Times Completed
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#A09E9A] tracking-widest uppercase text-right ml-4 whitespace-nowrap">
+                        Achieved<br/>{entry.achievedDate}
+                      </span>
+                    </motion.div>
+                  );
+                },
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

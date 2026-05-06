@@ -20,7 +20,10 @@
 
     <!-- Inline splash: rendered immediately by the browser before React mounts.
          When React renders into #root, this content is replaced with the real UI.
-         Eliminates the white flash + shows the brand mark instantly. -->
+         Eliminates the white flash + shows the brand mark instantly.
+         分流逻辑：老用户（localStorage 有 becoming.hadSession）显示 skeleton，
+         新用户显示 Becoming 品牌 splash。inline-script 在 HTML 解析阶段就跑，
+         先于 JS bundle 加载，因此老用户从冷启动起就不再看到 Becoming 闪现。 -->
     <style>
       html, body { margin: 0; padding: 0; background: #F5F2EC; }
       #root-splash {
@@ -31,7 +34,7 @@
         font-family: ui-serif, Georgia, 'Times New Roman', serif;
         color: #1A1A1A;
       }
-      #root-splash .brand {
+      #root-splash.brand-splash .brand {
         font-size: clamp(52px, 14vw, 76px);
         font-weight: 500;
         letter-spacing: 0.01em;
@@ -42,12 +45,93 @@
         0%, 100% { opacity: 0.45; }
         50%      { opacity: 1; }
       }
+      /* Skeleton splash —— 复刻主框架的 header + 占位行布局，避免登录后/刷新闪 Becoming。
+         背景与主框架 #F9F8F6 一致，让 React mount 后无视觉跳跃。*/
+      #root-splash.skeleton-splash {
+        background: #F9F8F6;
+        display: block;
+        align-items: stretch;
+        justify-content: stretch;
+      }
+      #root-splash.skeleton-splash .skel-frame {
+        max-width: 28rem;
+        margin: 0 auto;
+        padding: 3rem 2rem 0;
+      }
+      #root-splash.skeleton-splash .skel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+      }
+      #root-splash.skeleton-splash .skel-title {
+        height: 1.75rem;
+        width: 7rem;
+        background: #E8E5DE;
+        border-radius: 4px;
+      }
+      #root-splash.skeleton-splash .skel-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.4rem;
+      }
+      #root-splash.skeleton-splash .skel-meta-line {
+        height: 0.6rem;
+        width: 3rem;
+        background: #E8E5DE;
+        border-radius: 3px;
+      }
+      #root-splash.skeleton-splash .skel-section-label {
+        height: 0.75rem;
+        width: 6rem;
+        background: #E8E5DE;
+        border-radius: 3px;
+        margin: 1.5rem 0 1rem;
+      }
+      #root-splash.skeleton-splash .skel-row {
+        height: 3.5rem;
+        background: #EDEAE3;
+        border-radius: 0.75rem;
+        margin-bottom: 0.5rem;
+      }
+      #root-splash.skeleton-splash .skel-pulse {
+        animation: skel-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes skel-pulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.55; }
+      }
     </style>
   </head>
   <body>
     <div id="root">
-      <div id="root-splash"><div class="brand">Becoming</div></div>
+      <!-- 默认渲染品牌 splash；inline-script 检测到老用户后会替换为 skeleton 模板。 -->
+      <div id="root-splash" class="brand-splash"><div class="brand">Becoming</div></div>
     </div>
+    <script>
+      // 老用户（曾登录成功过，写过 becoming.hadSession=true）跳过品牌 splash，
+      // 直接显示主框架占位骨架，与 React mount 后的 TodaySkeleton 视觉连续。
+      // 新用户首屏仍显示 Becoming 品牌 splash。
+      // 注意：keep this in sync with HAD_SESSION_KEY in src/App.tsx.
+      try {
+        if (localStorage.getItem('becoming.hadSession') === 'true') {
+          var splash = document.getElementById('root-splash');
+          splash.className = 'skeleton-splash';
+          splash.innerHTML = ''
+            + '<div class="skel-frame skel-pulse" aria-busy="true" aria-label="Loading">'
+            +   '<div class="skel-header">'
+            +     '<div class="skel-title"></div>'
+            +     '<div class="skel-meta"><div class="skel-meta-line"></div><div class="skel-meta-line"></div></div>'
+            +   '</div>'
+            +   '<div class="skel-section-label"></div>'
+            +   '<div class="skel-row"></div><div class="skel-row"></div>'
+            +   '<div class="skel-section-label"></div>'
+            +   '<div class="skel-row"></div><div class="skel-row"></div><div class="skel-row"></div>'
+            + '</div>';
+        }
+      } catch (e) { /* private mode / 旧浏览器无 localStorage：保留默认品牌 splash */ }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

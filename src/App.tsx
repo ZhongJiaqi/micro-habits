@@ -12,7 +12,7 @@ import { useDemoStore, isDemoMode } from './useDemoStore';
 import LoginPage from './components/LoginPage';
 import { auth, db } from './firebase';
 import { requestPermissionAndSubscribe, isPushSupported } from './lib/messaging';
-import { signInWithGoogle, consumeRedirectResult } from './lib/auth';
+import { signInWithGoogle, consumeRedirectResult, signOutAndClearCache } from './lib/auth';
 import { collection, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, User, AuthError } from 'firebase/auth';
 
@@ -180,7 +180,9 @@ export default function App() {
                 if (demoMode) {
                   window.location.search = '';
                 } else {
-                  auth.signOut();
+                  // 必须用 signOutAndClearCache 清掉 IndexedDB 持久化缓存 + reload，
+                  // 否则下一个登录到本设备的用户能读到上个用户的数据残留。
+                  signOutAndClearCache(auth, db, () => window.location.reload());
                 }
               }}
               className="text-[10px] font-medium tracking-wider text-[#8C8C8C] uppercase hover:text-[#1A1A1A] transition-colors"
@@ -199,7 +201,12 @@ export default function App() {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-28 relative px-8">
-          {user && !store.data.loaded ? (
+          {/* Skeleton 显示条件：
+              - 非 demo（demo store 始终 loaded=true，本就有数据）
+              - 且 (auth 还没就绪 OR 数据还没到)
+              这样老用户乐观渲染（authReady=false, user=null, hadSession=true）期间
+              也走 skeleton，避免 TodayView 拿到空数组渲染 "No practices yet…" 文案闪现。 */}
+          {!demoMode && (!authReady || !store.data.loaded) ? (
             <TodaySkeleton />
           ) : (
           <AnimatePresence mode="wait">
